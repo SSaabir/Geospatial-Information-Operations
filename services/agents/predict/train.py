@@ -14,6 +14,8 @@ df = pd.read_csv("preprocessed_climate_dataset5.csv")
 print("Dataset Preview:")
 print(df.head())
 
+#Drops irrelevant columns (name, icon).
+#Removes rows where the target label (conditions) is missing.
 # Drop irrelevant columns (keep datetime, sunrise, sunset)
 drop_cols = ["name", "icon"]
 df = df.drop(columns=drop_cols, errors="ignore")
@@ -22,17 +24,22 @@ df = df.drop(columns=drop_cols, errors="ignore")
 df = df.dropna(subset=["conditions"])
 
 # ---- Feature Engineering ----
+#Converts date string → datetime object.
 # Parse datetime (date only)
 df["datetime"] = pd.to_datetime(df["datetime"], format="%m/%d/%Y", errors="coerce")
 
 # Parse sunrise/sunset (time only)
+# Convert sunrise/sunset strings → datetime objects (time only)
 df["sunrise"] = pd.to_datetime(df["sunrise"], format="%I:%M:%S %p", errors="coerce")
 df["sunset"] = pd.to_datetime(df["sunset"], format="%I:%M:%S %p", errors="coerce")
 
 # Extract features from datetime
+# Extract "day of year" from datetime (1–365)
 df["dayofyear"] = df["datetime"].dt.dayofyear
 
 # Cyclical encodings
+# Encode "day of year" as sine/cosine (cyclical encoding)
+# → Helps ML model understand yearly seasonality
 df["doy_sin"] = np.sin(2*np.pi*df["dayofyear"]/365.25)
 df["doy_cos"] = np.cos(2*np.pi*df["dayofyear"]/365.25)
 
@@ -54,14 +61,17 @@ X = df[feature_cols]
 y = df["conditions"].astype(str)
 
 # Handle missing values
+# Replace missing numeric values with the median of that column
 imputer = SimpleImputer(strategy="median")
 X_imputed = imputer.fit_transform(X)
 
 # Encode target labels
+# Convert text labels (e.g. "Cloudy") → numeric values
 label_encoder = LabelEncoder()
 y_encoded = label_encoder.fit_transform(y)
 
 # Show class balance
+# Show class balance (percentage of each condition)
 print("\n📊 Class Distribution:")
 print(pd.Series(y).value_counts(normalize=True) * 100)
 
@@ -77,6 +87,7 @@ model.fit(X_train, y_train)
 print("\n✅ Model Test Accuracy:", model.score(X_test, y_test))
 
 # 📊 Classification Report
+# Detailed classification report (precision, recall, f1-score)
 print("\n📊 Classification Report:")
 print(classification_report(
     y_test,
@@ -86,6 +97,7 @@ print(classification_report(
 ))
 
 # 4. Save trained model + encoder + imputer
+# Save model, encoder, and imputer for later use in prediction API
 joblib.dump(model, "climate_condition_model.pkl")
 joblib.dump(label_encoder, "label_encoder.pkl")
 joblib.dump(imputer, "feature_imputer.pkl")
