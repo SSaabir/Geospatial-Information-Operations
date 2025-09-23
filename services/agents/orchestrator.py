@@ -27,7 +27,7 @@ def process_node(state: WorkflowState) -> WorkflowState:
     """Processing node"""
     state["step"] = "processing"
     # Send query to collector agent
-    query = "get last 7 day weather_data"
+    query = "get last 20 day cloudcover"
     try:
         agent_result = run_collector_agent(query)
         state["result"] = agent_result
