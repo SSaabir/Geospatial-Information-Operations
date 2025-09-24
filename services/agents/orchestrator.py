@@ -1,85 +1,106 @@
-
-# Simple LangGraph Workflow
 from langgraph.graph import StateGraph, END, START
-from langchain.tools import tool
-from langchain_groq import ChatGroq
-from typing import TypedDict, Dict, Any
+from typing import TypedDict
 import json
-from collector import run_collector_agent
+from collector import run_collector_agent         # ✅ Collector agent
+from predict.predict_too import run_predict_agent        # ✅ Prediction agent
 
 
-
-# Define the state for our workflow
+# -------------------------
+# Define workflow state
+# -------------------------
 class WorkflowState(TypedDict):
-    """Simple state structure for the workflow"""
     user_input: str
-    result: str
+    result: dict
     step: str
 
 
+# -------------------------
 # Define workflow nodes
+# -------------------------
 def start_node(state: WorkflowState) -> WorkflowState:
-    """Starting node of the workflow"""
     state["step"] = "started"
     return state
 
+
 def process_node(state: WorkflowState) -> WorkflowState:
-    """Processing node"""
     state["step"] = "processing"
-    # Send query to collector agent
-    query = "get last 20 day cloudcover"
+
     try:
-        agent_result = run_collector_agent(query)
-        state["result"] = agent_result
+        # 1️⃣ Run collector agent
+        query = "get last 7 day weather_data"
+        collector_result = run_collector_agent(query)
+        print("Debug: Collector Result:", collector_result)
+
+        # 2️⃣ Prepare input for prediction (can use collector_result if needed)
+        predict_input = json.dumps({
+            "datetime": "02/02/1997",
+            "sunrise": "06:59:19 AM",
+            "sunset": "06:49:34 PM",
+            "humidity": 74.2,
+            "sealevelpressure": 1009.4,
+            "temp": 24.5
+        })
+
+        # 3️⃣ Run prediction agent
+        prediction_result = run_predict_agent(predict_input)
+        print("Debug: Prediction Result:", prediction_result)
+
+        # 4️⃣ Save both results in state
+        state["result"] = {
+            "collector_output": collector_result,
+            "prediction_output": prediction_result
+        }
+
     except Exception as e:
-        state["result"] = f"Error: {e}"
-    
+        state["result"] = {"error": str(e)}
+
     return state
 
+
 def end_node(state: WorkflowState) -> WorkflowState:
-    """Final node"""
     state["step"] = "completed"
     return state
 
 
-# Create and build the workflow
+# -------------------------
+# Build workflow
+# -------------------------
 workflow = StateGraph(WorkflowState)
 
-# Add nodes
 workflow.add_node("start", start_node)
 workflow.add_node("process", process_node)
 workflow.add_node("end", end_node)
 
-# Add edges
 workflow.add_edge(START, "start")
 workflow.add_edge("start", "process")
 workflow.add_edge("process", "end")
 workflow.add_edge("end", END)
 
-# Compile the workflow
 app = workflow.compile()
-
-print("✅ Simple workflow created successfully!")
-
+print("✅ Workflow with collector + prediction created successfully!")
 
 
-# Test the workflow
+# -------------------------
+# Run workflow
+# -------------------------
 def run_workflow(user_input: str):
-    """Run the workflow with user input"""
     initial_state = WorkflowState(
         user_input=user_input,
-        result="",
+        result={},
         step=""
     )
+    return app.invoke(initial_state)
 
-    result = app.invoke(initial_state)
-    return result
 
-# Example usage
-test_input = "Hello, this is a test"
-result = run_workflow(test_input)
+# -------------------------
+# Main
+# -------------------------
+if __name__ == "__main__":
+    test_input = "Run weather workflow"
+    result = run_workflow(test_input)
 
-print(f"Input: {result['user_input']}")
-print(f"Result: {result['result']}")
-print(f"Final step: {result['step']}")
-
+    print("\n--- Workflow Output ---")
+    print(f"Input: {result['user_input']}")
+    print(f"Collector Result: {result['result'].get('collector_output')}")
+    print(f"Prediction Result: {result['result'].get('prediction_output')}")
+    print(f"Final Step: {result['step']}")
