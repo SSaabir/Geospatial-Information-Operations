@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar } from 'recharts';
-import { Menu, X, TrendingUp, Cloud, MessageSquare, FileText, Home, Info, Mail, HelpCircle, FileCheck, LogIn, LogOut, ChevronDown, Sun, Thermometer, Droplets, Wind } from 'lucide-react';
+import { Menu, X, TrendingUp, Cloud, MessageSquare, FileText, Home, Info, Mail, HelpCircle, FileCheck, LogIn, LogOut, ChevronDown, Sun, Thermometer, Droplets, Wind, User } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import ChatWindow from '../components/ChatWindow';
 
 const ClimateHomepage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const { user, logout, isAuthenticated } = useAuth();
 
   // Sample climate data based on your dataset structure
   const temperatureData = [
@@ -71,11 +74,11 @@ const ClimateHomepage = () => {
   }, []);
 
   const menuItems = [
-    { name: 'Home', icon: Home, href: '#home' },
-    { name: 'About Us', icon: Info, href: '#about' },
-    { name: 'Contact Us', icon: Mail, href: '#contact' },
-    { name: 'Terms', icon: FileCheck, href: '#terms' },
-    { name: 'FAQ', icon: HelpCircle, href: '#faq' }
+    { name: 'Home', icon: Home, href: '/home' },
+    { name: 'About Us', icon: Info, href: '/about' },
+    { name: 'Contact Us', icon: Mail, href: '/contact' },
+    { name: 'Terms', icon: FileCheck, href: '/terms' },
+    { name: 'FAQ', icon: HelpCircle, href: '/faq' }
   ];
 
   return (
@@ -98,27 +101,50 @@ const ClimateHomepage = () => {
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center space-x-8">
               {menuItems.map((item) => (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className="flex items-center space-x-2 text-gray-700 hover:text-purple-600 transition-colors duration-200 group"
                 >
                   <item.icon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                   <span className="font-medium">{item.name}</span>
-                </a>
+                </Link>
               ))}
             </nav>
 
             {/* Auth & Actions */}
             <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setIsLoggedIn(!isLoggedIn)}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105"
-                style={{backgroundColor: isLoggedIn ? '#CDC1FF' : '#A294F9', color: isLoggedIn ? '#6B46C1' : 'white'}}
-              >
-                {isLoggedIn ? <LogOut className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-                <span className="font-medium">{isLoggedIn ? 'Logout' : 'Login'}</span>
-              </button>
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-3">
+                  {/* User Avatar & Info */}
+                  <div className="flex items-center space-x-2 px-3 py-2 bg-purple-50 rounded-xl border border-purple-100">
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name}
+                      className="w-8 h-8 rounded-full"
+                    />
+                    <div className="hidden sm:block">
+                      <p className="text-sm font-medium text-gray-700">{user.name}</p>
+                    </div>
+                  </div>
+                  {/* Logout Button */}
+                  <button
+                    onClick={logout}
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-all duration-200 hover:scale-105"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="font-medium">Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 hover:scale-105"
+                >
+                  <LogIn className="w-4 h-4" />
+                  <span className="font-medium">Login</span>
+                </Link>
+              )}
 
               {/* Mobile menu button */}
               <button
@@ -135,15 +161,15 @@ const ClimateHomepage = () => {
             <div className="md:hidden py-4 border-t border-purple-100">
               <div className="flex flex-col space-y-3">
                 {menuItems.map((item) => (
-                  <a
+                  <Link
                     key={item.name}
-                    href={item.href}
+                    to={item.href}
                     className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-purple-100 transition-colors"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     <item.icon className="w-5 h-5" />
                     <span className="font-medium">{item.name}</span>
-                  </a>
+                  </Link>
                 ))}
               </div>
             </div>
@@ -403,14 +429,14 @@ const ClimateHomepage = () => {
             
             <div className="flex flex-wrap justify-center md:justify-end space-x-6 text-purple-100">
               {menuItems.map((item) => (
-                <a 
+                <Link 
                   key={item.name}
-                  href={item.href} 
+                  to={item.href} 
                   className="hover:text-white transition-colors duration-200 flex items-center space-x-1"
                 >
                   <item.icon className="w-4 h-4" />
                   <span>{item.name}</span>
-                </a>
+                </Link>
               ))}
             </div>
           </div>
@@ -420,6 +446,9 @@ const ClimateHomepage = () => {
           </div>
         </div>
       </footer>
+
+      {/* Chat Window */}
+      <ChatWindow />
     </div>
   );
 };

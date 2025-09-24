@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function TermsAndConditions() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const navigate = useNavigate();
 
   // Scroll progress bar
   useEffect(() => {
@@ -30,7 +32,7 @@ export default function TermsAndConditions() {
       setAccepting(false);
       setAccepted(true);
       setTimeout(() => {
-        window.location.href = "/climate-dashboard"; // change route
+        navigate("/"); // navigate to home page
       }, 1500);
     }, 500);
   };
