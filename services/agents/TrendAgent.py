@@ -8,35 +8,36 @@ import seaborn as sns
 from scipy import stats
 import os
 import json
+from sqlalchemy import create_engine  # NEW: For PostgreSQL connection
 
 class TrendAgent:
-    def __init__(self, data_path=None):
+    def __init__(self, db_uri="postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb"):
         """
         Initialize the Trend Analyzer Agent
         
         Args:
-            data_path (str): Path to the climate dataset CSV file
+            db_uri (str): PostgreSQL connection URI
         """
-        self.data_path = data_path
+        self.db_uri = db_uri
         self.df = None
         self.analysis_results = {}
         
-        if data_path:
-            self.load_data(data_path)
+        self.load_data()
     
-    def load_data(self, data_path):
+    def load_data(self):
         """
-        Load and preprocess climate data from CSV file
+        Load and preprocess climate data from PostgreSQL database
         
-        Args:
-            data_path (str): Path to the CSV file
-            
         Returns:
             bool: True if successful, False otherwise
         """
         try:
-            self.df = pd.read_csv(data_path)
-            print(f"Data loaded successfully with shape: {self.df.shape}")
+            # Create SQLAlchemy engine
+            engine = create_engine(self.db_uri)
+            # Query the weather_data table
+            query = "SELECT * FROM weather_data"
+            self.df = pd.read_sql(query, engine)
+            print(f"Data loaded successfully from PostgreSQL with shape: {self.df.shape}")
             
             # Check if datetime column exists
             if 'datetime' in self.df.columns:
@@ -50,11 +51,8 @@ class TrendAgent:
             print(f"Data columns: {list(self.df.columns)}")
             return True
             
-        except FileNotFoundError:
-            print(f"Error: File '{data_path}' not found.")
-            return False
         except Exception as e:
-            print(f"Error loading data: {e}")
+            print(f"Error loading data from PostgreSQL: {e}")
             return False
     
     def filter_data_by_date(self, start_date=None, end_date=None):
