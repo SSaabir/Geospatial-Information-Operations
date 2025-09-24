@@ -1,3 +1,4 @@
+#report.py
 import pandas as pd
 import numpy as np
 import re
@@ -297,4 +298,32 @@ def get_dataset_info() -> dict:
         "data_years": f"{DF['year'].min()}–{DF['year'].max()}",
         "available_columns": DF.columns.tolist(),
         "total_records": len(DF)
-    }   
+    }
+
+# ---------------- NEW ENTRY POINT ----------------
+def run_report_agent(user_query: str, generate_pdf: bool = False) -> str:
+    """
+    Main entry point for Orchestrator.
+    Takes a user query, analyzes it, and returns a climate summary.
+    If generate_pdf=True, also creates a PDF report.
+    """
+    try:
+        # Step 1: Extract years + metrics
+        extracted = extract_years_and_intent(user_query)
+
+        # Step 2: Generate summary
+        summary = generate_targeted_summary(
+            extracted["start_year"],
+            extracted["end_year"],
+            extracted["requested_metrics"]
+        )
+
+        # Step 3: (Optional) PDF
+        if generate_pdf and not summary.startswith("❌"):
+            pdf_file = generate_pdf_report(summary)
+            return f"{summary}\n\n📄 PDF report saved as: {pdf_file}"
+
+        return summary
+
+    except Exception as e:
+        return f"❌ Report Agent Error: {e}"
