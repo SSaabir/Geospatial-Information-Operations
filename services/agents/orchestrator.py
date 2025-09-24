@@ -12,16 +12,6 @@ class WorkflowState(TypedDict):
     result: dict
     step: str
 
-
-# -------------------------
-# Define workflow nodes
-# -------------------------
-def start_node(state: WorkflowState) -> WorkflowState:
-    state["step"] = "started"
-    return state
-
-def process_node(state: WorkflowState) -> WorkflowState:
-    state["step"] = "processing"
 '''
     query = state["user_input"].lower()
     
@@ -41,6 +31,15 @@ def process_node(state: WorkflowState) -> WorkflowState:
     '''
 
 
+# -------------------------
+# Define workflow nodes
+# -------------------------
+def start_node(state: WorkflowState) -> WorkflowState:
+    state["step"] = "started"
+    return state
+
+def process_node(state: WorkflowState) -> WorkflowState:
+    state["step"] = "processing"
     try:
         # 1️⃣ Run collector agent
         query = "get last 7 day weather_data"
