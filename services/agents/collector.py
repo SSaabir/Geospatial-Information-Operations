@@ -1,7 +1,7 @@
 from langgraph.graph import StateGraph, END, START
 from langchain.agents import initialize_agent
 from langchain_community.agent_toolkits.load_tools import load_tools
-from typing import TypedDict
+from typing import TypedDict, Optional, List
 from langchain_groq import ChatGroq
 import numpy as np
 import pandas as pd
@@ -29,7 +29,7 @@ tools = load_tools(["serpapi", "requests_all"],
                    )
 
 # 2️⃣ Create SQLAlchemy engine
-engine = create_engine('postgresql+psycopg2://postgres:ElDiabloX32@localhost:5432/GISDb')
+engine = create_engine('postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb')
 db = SQLDatabase(engine)
 sql_chain = create_sql_query_chain(llm, db)
 
@@ -483,7 +483,7 @@ collector = initialize_agent(
 
 class collectorState(TypedDict):
     input: str  # input query
-    title: list | None
+    title: list | None #Optional[List] can be used 
     url: list | None
     publishedAt: list | None
     output: str  # collected data

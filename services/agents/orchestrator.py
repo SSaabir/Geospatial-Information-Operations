@@ -6,6 +6,7 @@ from langchain_groq import ChatGroq
 from typing import TypedDict, Dict, Any
 import json
 from collector import run_collector_agent
+from trend import run_trend_agent
 
 
 
@@ -23,16 +24,25 @@ def start_node(state: WorkflowState) -> WorkflowState:
     state["step"] = "started"
     return state
 
+# In orchestrator.py (unchanged, for reference)
 def process_node(state: WorkflowState) -> WorkflowState:
     """Processing node"""
     state["step"] = "processing"
-    # Send query to collector agent
-    query = "get last 7 day weather_data"
+    query = state["user_input"].lower()
+    
     try:
-        agent_result = run_collector_agent(query)
+        # Router logic to select agent
+        if any(word in query for word in ["trend", "analyze", "trends", "analysis"]):
+            state["agent_used"] = "trend"
+            agent_result = run_trend_agent(state["user_input"], db_uri="postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb")
+        else:
+            state["agent_used"] = "collector"
+            agent_result = run_collector_agent(state["user_input"])
+        
         state["result"] = agent_result
     except Exception as e:
         state["result"] = f"Error: {e}"
+        state["agent_used"] = "error"
     
     return state
 
@@ -76,10 +86,17 @@ def run_workflow(user_input: str):
     return result
 
 # Example usage
-test_input = "Hello, this is a test"
-result = run_workflow(test_input)
+# Test with collector-style query
+test_input_collector = "get last 20 day cloudcover"
+result_collector = run_workflow(test_input_collector)
+print(f"Collector Input: {result_collector['user_input']}")
+print(f"Collector Result: {result_collector['result']}")
+print(f"Collector Final step: {result_collector['step']}")
 
-print(f"Input: {result['user_input']}")
-print(f"Result: {result['result']}")
-print(f"Final step: {result['step']}")
+# Test with trend-style query (NEW: Added for demonstration)
+test_input_trend = "analyze trends last 20 day cloudcover"
+result_trend = run_workflow(test_input_trend)
+print(f"Trend Input: {result_trend['user_input']}")
+print(f"Trend Result: {result_trend['result']}")
+print(f"Trend Final step: {result_trend['step']}")
 
