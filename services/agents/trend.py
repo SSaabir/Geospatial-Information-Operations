@@ -1,8 +1,13 @@
 from TrendAgent import TrendAgent
 import datetime
 import json
+import os
+from dotenv import load_dotenv
 
-def run_trend_agent(query, db_uri="postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb"):
+# Load environment variables
+load_dotenv()
+
+def run_trend_agent(query, db_uri=None):
     """
     Run the TrendAgent based on the query.
     
@@ -13,6 +18,8 @@ def run_trend_agent(query, db_uri="postgresql+psycopg2://postgres:Mathu1312@loca
     Returns:
         str: JSON string of the analysis results or error message
     """
+    if db_uri is None:
+        db_uri = os.getenv("DATABASE_URL")
     agent = TrendAgent(db_uri)
     
     if agent.df is None:

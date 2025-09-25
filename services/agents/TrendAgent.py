@@ -9,16 +9,20 @@ from scipy import stats
 import os
 import json
 from sqlalchemy import create_engine  # NEW: For PostgreSQL connection
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class TrendAgent:
-    def __init__(self, db_uri="postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb"):
+    def __init__(self, db_uri=None):
         """
         Initialize the Trend Analyzer Agent
         
         Args:
             db_uri (str): PostgreSQL connection URI
         """
-        self.db_uri = db_uri
+        self.db_uri = db_uri if db_uri else os.getenv("DATABASE_URL")
         self.df = None
         self.analysis_results = {}
         

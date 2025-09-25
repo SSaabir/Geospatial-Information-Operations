@@ -67,9 +67,18 @@ pytestdebug.log
 dmypy.json
 .pyre/
 
-# Environments
+# Environments & Secrets (CRITICAL - NEVER COMMIT!)
 .env
+.env.local
+.env.*.local
 *.env
+secrets/
+credentials/
+keys/
+*.pem
+*.key
+*.crt
+*.cert
 
 # FastAPI static / generated files
 *.db

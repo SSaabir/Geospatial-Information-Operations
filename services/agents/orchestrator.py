@@ -1,8 +1,13 @@
 from langgraph.graph import StateGraph, END, START
 from typing import TypedDict
 import json
+import os
+from dotenv import load_dotenv
 from collector import run_collector_agent         # ✅ Collector agent
 from predict.predict_too import run_predict_agent        # ✅ Prediction agent
+
+# Load environment variables
+load_dotenv()
 
 # -------------------------
 # Define workflow state
@@ -19,7 +24,7 @@ class WorkflowState(TypedDict):
         # Router logic to select agent
         if any(word in query for word in ["trend", "analyze", "trends", "analysis"]):
             state["agent_used"] = "trend"
-            agent_result = run_trend_agent(state["user_input"], db_uri="postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb")
+            agent_result = run_trend_agent(state["user_input"], db_uri=os.getenv("DATABASE_URL"))
         else:
             state["agent_used"] = "collector"
             agent_result = run_collector_agent(state["user_input"])
