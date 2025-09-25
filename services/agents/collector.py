@@ -15,21 +15,23 @@ from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
 import re, json, time, os
 from datetime import date
+from dotenv import load_dotenv
 
-
+# Load environment variables
+load_dotenv()
 
 llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct",
-               groq_api_key="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"
+               groq_api_key=os.getenv("GROQ_API_KEY")
                )
 
 # Define tools (APIs, DB connectors)
 tools = load_tools(["serpapi", "requests_all"], 
-                   serpapi_api_key = "49a312e94db629a1d7d4efa33647dc82322dd921680f5cbe1441de0aee587bbd",
+                   serpapi_api_key=os.getenv("SERPAPI_API_KEY"),
                    allow_dangerous_tools=True
                    )
 
-# 2️⃣ Create SQLAlchemy engine
-engine = create_engine('postgresql+psycopg2://postgres:Mathu1312@localhost:5432/GISDb')
+# 2️⃣ Create SQLAlchemy engine using environment variables
+engine = create_engine(os.getenv("DATABASE_URL"))
 db = SQLDatabase(engine)
 sql_chain = create_sql_query_chain(llm, db)
 
@@ -258,10 +260,10 @@ def fetch_and_store_weather(city="Colombo", date="yesterday"):
 
     # Insert into DB
     conn = psycopg2.connect(
-        host="localhost",
-        database="GISDb",
-        user="postgres",
-        password="ElDiabloX32"
+        host=os.getenv("DB_HOST", "localhost"),
+        database=os.getenv("DB_NAME", "GISDb"),
+        user=os.getenv("DB_USER", "postgres"),
+        password=os.getenv("DB_PASSWORD")
     )
     cursor = conn.cursor()
     cursor.execute("""
@@ -294,7 +296,7 @@ def fetch_climate_news(query: str = "climate change"):
 
     import requests
 
-    api_key = "f875db6eac964594bbcd54e77f9d9b22"
+    api_key = os.getenv("WEATHER_API_KEY")
     url = "https://newsapi.org/v2/everything"
     params = {
         "q": query,
