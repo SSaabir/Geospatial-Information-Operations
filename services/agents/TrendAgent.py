@@ -11,8 +11,20 @@ import json
 from sqlalchemy import create_engine  # NEW: For PostgreSQL connection
 from dotenv import load_dotenv
 
+# LangChain and LangGraph imports
+from langgraph.graph import StateGraph, END, START
+from langchain.agents import initialize_agent
+from langchain_community.agent_toolkits.load_tools import load_tools
+from typing import TypedDict, Optional, List
+from langchain_groq import ChatGroq
+from langchain.tools import tool
+
 # Load environment variables
 load_dotenv()
+
+# Initialize LLM for LangChain integration
+llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct",
+               groq_api_key=os.getenv("GROQ_API_KEY"))
 
 class TrendAgent:
     def __init__(self, db_uri=None):
@@ -368,3 +380,256 @@ class TrendAgent:
         except Exception as e:
             print(f"Error exporting results: {e}")
             return False
+
+
+# Global instance for tools
+trend_agent_instance = None
+
+def get_trend_agent():
+    """Get or create a global TrendAgent instance"""
+    global trend_agent_instance
+    if trend_agent_instance is None:
+        trend_agent_instance = TrendAgent()
+    return trend_agent_instance
+
+
+# Define TrendState for LangGraph
+class TrendState(TypedDict):
+    input: str  # input query/parameters
+    start_date: Optional[str]  # start date for analysis
+    end_date: Optional[str]  # end date for analysis
+    analysis_results: Optional[dict]  # trend analysis results
+    visualizations: Optional[dict]  # visualization paths
+    data_info: Optional[dict]  # dataset information
+    output: str  # final formatted output
+    error: Optional[str]  # error message if any
+
+
+# LangChain tools for trend analysis
+@tool("analyze_climate_trends", return_direct=True)
+def analyze_climate_trends_tool(tool_input: str) -> str:
+    """
+    Analyze climate trends for a specified date range.
+    tool_input format: "start_date=YYYY-MM-DD;end_date=YYYY-MM-DD" or just "analyze" for full dataset
+    """
+    try:
+        agent = get_trend_agent()
+        
+        # Parse input parameters
+        start_date, end_date = None, None
+        if "=" in tool_input:
+            params = dict(item.split("=") for item in tool_input.split(";") if "=" in item)
+            start_date = params.get("start_date")
+            end_date = params.get("end_date")
+        
+        # Perform analysis
+        results = agent.analyze_trends(start_date, end_date)
+        return json.dumps(results, default=str)
+        
+    except Exception as e:
+        return json.dumps({"error": f"Analysis failed: {str(e)}"})
+
+
+@tool("generate_trend_visualizations", return_direct=True)
+def generate_trend_visualizations_tool(tool_input: str) -> str:
+    """
+    Generate climate trend visualizations.
+    tool_input format: "start_date=YYYY-MM-DD;end_date=YYYY-MM-DD;output_dir=path" or "generate" for defaults
+    """
+    try:
+        agent = get_trend_agent()
+        
+        # Parse input parameters
+        start_date, end_date, output_dir = None, None, "visualizations"
+        if "=" in tool_input:
+            params = dict(item.split("=") for item in tool_input.split(";") if "=" in item)
+            start_date = params.get("start_date")
+            end_date = params.get("end_date")
+            output_dir = params.get("output_dir", "visualizations")
+        
+        # Generate visualizations
+        plot_paths = agent.generate_visualizations(start_date, end_date, output_dir)
+        return json.dumps(plot_paths, default=str)
+        
+    except Exception as e:
+        return json.dumps({"error": f"Visualization generation failed: {str(e)}"})
+
+
+@tool("get_dataset_info", return_direct=True)
+def get_dataset_info_tool(tool_input: str) -> str:
+    """
+    Get basic information about the loaded climate dataset.
+    tool_input: any string (parameter is ignored)
+    """
+    try:
+        agent = get_trend_agent()
+        info = agent.get_data_info()
+        return json.dumps(info, default=str)
+        
+    except Exception as e:
+        return json.dumps({"error": f"Failed to get dataset info: {str(e)}"})
+
+
+@tool("export_trend_results", return_direct=True)
+def export_trend_results_tool(tool_input: str) -> str:
+    """
+    Export trend analysis results to JSON file.
+    tool_input format: "output_path=filename.json" or just filename
+    """
+    try:
+        agent = get_trend_agent()
+        
+        # Parse output path
+        output_path = "trend_analysis_results.json"
+        if "=" in tool_input:
+            params = dict(item.split("=") for item in tool_input.split(";") if "=" in item)
+            output_path = params.get("output_path", output_path)
+        elif tool_input.strip():
+            output_path = tool_input.strip()
+        
+        # Export results
+        success = agent.export_results(output_path)
+        return json.dumps({"success": success, "output_path": output_path})
+        
+    except Exception as e:
+        return json.dumps({"error": f"Export failed: {str(e)}"})
+
+
+# Create tools list
+trend_tools = [
+    analyze_climate_trends_tool,
+    generate_trend_visualizations_tool,
+    get_dataset_info_tool,
+    export_trend_results_tool
+]
+
+# Initialize trend agent with tools
+trend_analyzer = initialize_agent(
+    trend_tools, llm, agent="zero-shot-react-description", verbose=True
+)
+
+
+# Define LangGraph nodes
+def data_info_node(state: TrendState) -> TrendState:
+    """Node to get dataset information"""
+    try:
+        result = get_dataset_info_tool.invoke("info")
+        state["data_info"] = json.loads(result)
+        if "error" in state["data_info"]:
+            state["error"] = state["data_info"]["error"]
+    except Exception as e:
+        state["error"] = f"Data info node failed: {str(e)}"
+    return state
+
+
+def analysis_node(state: TrendState) -> TrendState:
+    """Node to perform trend analysis"""
+    try:
+        # Build tool input from state
+        tool_input = ""
+        if state.get("start_date") and state.get("end_date"):
+            tool_input = f"start_date={state['start_date']};end_date={state['end_date']}"
+        else:
+            tool_input = "analyze"
+        
+        result = analyze_climate_trends_tool.invoke(tool_input)
+        state["analysis_results"] = json.loads(result)
+        if "error" in state["analysis_results"]:
+            state["error"] = state["analysis_results"]["error"]
+    except Exception as e:
+        state["error"] = f"Analysis node failed: {str(e)}"
+    return state
+
+
+def visualization_node(state: TrendState) -> TrendState:
+    """Node to generate visualizations"""
+    try:
+        # Build tool input from state
+        tool_input = ""
+        if state.get("start_date") and state.get("end_date"):
+            tool_input = f"start_date={state['start_date']};end_date={state['end_date']};output_dir=visualizations"
+        else:
+            tool_input = "generate"
+        
+        result = generate_trend_visualizations_tool.invoke(tool_input)
+        state["visualizations"] = json.loads(result)
+        if "error" in state["visualizations"]:
+            state["error"] = state["visualizations"]["error"]
+    except Exception as e:
+        state["error"] = f"Visualization node failed: {str(e)}"
+    return state
+
+
+def output_compilation_node(state: TrendState) -> TrendState:
+    """Node to compile final output"""
+    try:
+        if state.get("error"):
+            state["output"] = f"Error: {state['error']}"
+        else:
+            # Compile comprehensive output
+            output_data = {
+                "dataset_info": state.get("data_info", {}),
+                "analysis_results": state.get("analysis_results", {}),
+                "visualizations": state.get("visualizations", {}),
+                "parameters": {
+                    "start_date": state.get("start_date"),
+                    "end_date": state.get("end_date")
+                }
+            }
+            state["output"] = json.dumps(output_data, indent=2, default=str)
+    except Exception as e:
+        state["output"] = f"Output compilation failed: {str(e)}"
+    return state
+
+
+# Create StateGraph
+graph = StateGraph(TrendState)
+
+# Add nodes
+graph.add_node("data_info", data_info_node)
+graph.add_node("analysis", analysis_node)
+graph.add_node("visualization", visualization_node)
+graph.add_node("output", output_compilation_node)
+
+# Add edges
+graph.add_edge(START, "data_info")
+graph.add_edge("data_info", "analysis")
+graph.add_edge("analysis", "visualization")
+graph.add_edge("visualization", "output")
+graph.add_edge("output", END)
+
+# Compile the graph
+trend_app = graph.compile()
+
+
+def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str = None) -> str:
+    """
+    Run the trend analysis agent with the given parameters.
+    
+    Args:
+        query (str): Description of the analysis to perform
+        start_date (str): Start date in YYYY-MM-DD format (optional)
+        end_date (str): End date in YYYY-MM-DD format (optional)
+    
+    Returns:
+        str: JSON string with comprehensive analysis results
+    """
+    try:
+        # Create initial state
+        initial_state = {
+            "input": query,
+            "start_date": start_date,
+            "end_date": end_date,
+            "analysis_results": None,
+            "visualizations": None,
+            "data_info": None,
+            "output": "",
+            "error": None
+        }
+        
+        # Run the graph
+        result = trend_app.invoke(initial_state)
+        return result["output"]
+        
+    except Exception as e:
+        return json.dumps({"error": f"Trend analysis agent failed: {str(e)}"}, default=str)
