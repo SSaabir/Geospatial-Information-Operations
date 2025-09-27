@@ -58,7 +58,7 @@ class AuthMiddleware:
         
         return payload
     
-    async def get_current_user(self, token_data: Dict[str, Any] = Depends(verify_token)) -> UserDB:
+    async def get_current_user(self, token_data: Dict[str, Any]) -> UserDB:
         """
         Get current authenticated user from token
         
@@ -179,8 +179,9 @@ async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(secur
     """Verify JWT token dependency"""
     return await auth_middleware.verify_token(credentials)
 
-async def get_current_user(token_data: Dict[str, Any] = Depends(verify_token)) -> UserDB:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> UserDB:
     """Get current user dependency"""
+    token_data = await auth_middleware.verify_token(credentials)
     return await auth_middleware.get_current_user(token_data)
 
 async def get_current_admin_user(current_user: UserDB = Depends(get_current_user)) -> UserDB:

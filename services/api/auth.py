@@ -23,7 +23,7 @@ from security.jwt_handler import (
     jwt_handler, verify_password, get_password_hash, 
     create_tokens_for_user, refresh_access_token
 )
-from security.auth_middleware import get_current_user, get_optional_user
+from security.auth_middleware import get_current_user, get_optional_user, security
 from db_config import DatabaseConfig
 
 # Configure logging
@@ -191,7 +191,7 @@ async def login_user(
 @auth_router.post("/logout")
 async def logout_user(
     current_user: UserDB = Depends(get_current_user),
-    credentials: HTTPAuthorizationCredentials = Depends(get_current_user)
+    credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """
     Logout user by blacklisting the current token
@@ -205,7 +205,7 @@ async def logout_user(
     """
     try:
         # Get token from authorization header
-        token = credentials  # This will be the raw token
+        token = credentials.credentials
         
         # Blacklist the token
         if hasattr(jwt_handler, 'blacklist_token'):

@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 # Import modules
 from models.user import Base, UserDB
 from api.auth import auth_router
+from api.orchestrator_api import orchestrator_router
 from db_config import DatabaseConfig
 from security.auth_middleware import AuthenticationError, AuthorizationError
 
@@ -84,6 +85,7 @@ if os.getenv("ENVIRONMENT") == "production":
 
 # Include routers
 app.include_router(auth_router)
+app.include_router(orchestrator_router)
 
 # Custom exception handlers
 @app.exception_handler(AuthenticationError)

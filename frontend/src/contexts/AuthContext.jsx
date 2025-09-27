@@ -5,6 +5,8 @@ const AuthContext = createContext();
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+console.log('API_BASE_URL:', API_BASE_URL); // Debug log
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

@@ -14,7 +14,7 @@ from langchain_experimental.sql import SQLDatabaseChain
 from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
 import re, json, time, os
-from datetime import date
+from datetime import date, datetime
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -222,8 +222,12 @@ def fetch_weather_tool (tool_input: str) -> str:
 
 def fetch_and_store_weather(city="Colombo", date="yesterday"):
     """Fetch weather data from API and store in PostgreSQL."""
+    # Clean up date parameter to avoid URL encoding issues
+    import urllib.parse
+    clean_date = urllib.parse.quote(date.strip(), safe='')
+    
     # API Call
-    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{date}?unitGroup=metric&include=days&key=KGCW7SXGVXRYL7ZK7W7SEJSR8&contentType=json"
+    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{clean_date}?unitGroup=metric&include=days&key=KGCW7SXGVXRYL7ZK7W7SEJSR8&contentType=json"
     ResultBytes = urllib.request.urlopen(url)
     jsonData = json.load(ResultBytes)
     day = jsonData["days"][0]
@@ -519,3 +523,186 @@ def run_collector_agent(query: str) -> str:
     """Run the collector agent with the given query and return the output."""
     result = app.invoke({"input": query})
     return result["output"]
+
+
+# ====================================================================
+# DAILY AUTOMATION FUNCTIONS
+# ====================================================================
+
+def fetch_current_weather_batch(locations=None, date_param="today"):
+    """
+    Fetch current weather data for multiple locations and store in database.
+    
+    Args:
+        locations (list): List of city names. Defaults to Sri Lankan cities.
+        date_param (str): Date parameter for API ("today", "yesterday", etc.)
+        
+    Returns:
+        dict: Results summary with success/failure counts and details
+    """
+    if locations is None:
+        locations = ["Colombo", "Kandy", "Galle", "Jaffna", "Trincomalee", "Negombo"]
+    
+    results = {
+        "timestamp": date.today().isoformat(),
+        "total_locations": len(locations),
+        "successful": 0,
+        "failed": 0,
+        "details": [],
+        "errors": []
+    }
+    
+    print(f"🌤️ Starting batch weather collection for {len(locations)} locations...")
+    print(f"📅 Date parameter: {date_param}")
+    print(f"📍 Locations: {', '.join(locations)}")
+    
+    for i, city in enumerate(locations, 1):
+        try:
+            print(f"\n[{i}/{len(locations)}] Fetching weather for {city}...")
+            weather_data = fetch_and_store_weather(city, date_param)
+            
+            results["successful"] += 1
+            results["details"].append({
+                "location": city,
+                "status": "success",
+                "temperature": weather_data.get("temp"),
+                "conditions": weather_data.get("conditions"),
+                "timestamp": weather_data.get("datetime")
+            })
+            
+            print(f"✅ {city}: {weather_data.get('temp')}°C, {weather_data.get('conditions')}")
+            
+        except Exception as e:
+            results["failed"] += 1
+            error_msg = f"Failed to fetch weather for {city}: {str(e)}"
+            results["errors"].append(error_msg)
+            results["details"].append({
+                "location": city,
+                "status": "error", 
+                "error": str(e)
+            })
+            
+            print(f"❌ {city}: {str(e)}")
+    
+    # Print summary
+    print(f"\n📊 BATCH COLLECTION SUMMARY")
+    print(f"=" * 40)
+    print(f"✅ Successful: {results['successful']}")
+    print(f"❌ Failed: {results['failed']}")
+    print(f"📍 Total locations: {results['total_locations']}")
+    print(f"📅 Date: {results['timestamp']}")
+    
+    return results
+
+
+def setup_daily_weather_collection():
+    """
+    Setup function to configure daily weather data collection.
+    This function can be called to perform the daily collection routine.
+    """
+    from datetime import datetime
+    
+    print("🚀 DAILY WEATHER COLLECTION STARTED")
+    print("=" * 50)
+    print(f"⏰ Collection time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Check database connection first
+    try:
+        conn = psycopg2.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            database=os.getenv("DB_NAME", "GISDb"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD")
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM weather_data")
+        record_count = cursor.fetchone()[0]
+        cursor.close()
+        conn.close()
+        print(f"📊 Current database records: {record_count}")
+        print("✅ Database connection verified")
+    except Exception as e:
+        print(f"❌ Database connection failed: {str(e)}")
+        return {"error": "Database connection failed", "details": str(e)}
+    
+    # Collect today's weather data
+    weather_results = fetch_current_weather_batch(date_param="today")
+    
+    # Collect air quality data for major cities
+    air_quality_results = {"successful": 0, "failed": 0, "details": []}
+    major_cities = ["Colombo", "Kandy", "Galle"]
+    
+    print(f"\n🌬️ Collecting air quality data for {len(major_cities)} major cities...")
+    
+    for city in major_cities:
+        try:
+            result_json = upload_air_quality_to_postgres.invoke(city)
+            result_data = json.loads(result_json)
+            
+            if result_data.get("success"):
+                air_quality_results["successful"] += 1
+                air_quality_results["details"].append({
+                    "location": city,
+                    "status": "success"
+                })
+                print(f"✅ Air quality data collected for {city}")
+            else:
+                air_quality_results["failed"] += 1
+                air_quality_results["details"].append({
+                    "location": city,
+                    "status": "error",
+                    "error": result_data.get("error", "Unknown error")
+                })
+                print(f"❌ Air quality collection failed for {city}")
+                
+        except Exception as e:
+            air_quality_results["failed"] += 1
+            air_quality_results["details"].append({
+                "location": city,
+                "status": "error", 
+                "error": str(e)
+            })
+            print(f"❌ Air quality error for {city}: {str(e)}")
+    
+    # Final summary
+    print(f"\n🎯 DAILY COLLECTION COMPLETED")
+    print(f"=" * 50)
+    print(f"🌤️ Weather data: {weather_results['successful']}/{weather_results['total_locations']} locations")
+    print(f"🌬️ Air quality data: {air_quality_results['successful']}/{len(major_cities)} cities")
+    print(f"⏰ Completed at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    return {
+        "weather_results": weather_results,
+        "air_quality_results": air_quality_results,
+        "completion_time": datetime.now().isoformat()
+    }
+
+
+@tool("daily_weather_collection_tool", return_direct=True)
+def daily_weather_collection_tool(trigger: str = "manual") -> str:
+    """
+    Tool to trigger daily weather collection process.
+    Can be used by agents or called directly for automation.
+    
+    Args:
+        trigger (str): How the collection was triggered ("manual", "scheduled", "agent")
+    """
+    try:
+        print(f"🔄 Daily weather collection triggered: {trigger}")
+        results = setup_daily_weather_collection()
+        return json.dumps(results, default=str)
+    except Exception as e:
+        error_result = {
+            "error": "Daily collection failed", 
+            "details": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+        return json.dumps(error_result, default=str)
+
+
+# Add the new tool to the tools list
+try:
+    tools.append(daily_weather_collection_tool)
+    print("✅ Daily weather collection tool added successfully")
+except NameError:
+    pass

@@ -12,11 +12,13 @@ import WeatherPredictor from './pages/WeatherPredictor'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
+import OrchestratorDashboard from './pages/OrchestratorDashboard'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
 // Import layout components
 import Header from './components/Header'
 import Footer from './components/Footer'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Import context providers
 import { AuthProvider } from './contexts/AuthContext'
@@ -47,12 +49,29 @@ function App() {
                     <Route path="/terms" element={<TermsAndConditions />} />
                     <Route path="/weather-predictor" element={<WeatherPredictor />} />
                     
-                    {/* Dashboard routes */}
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/chat" element={<Chat />} />
+                    {/* Dashboard routes - Protected */}
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/orchestrator" element={
+                      <ProtectedRoute>
+                        <OrchestratorDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/chat" element={
+                      <ProtectedRoute>
+                        <Chat />
+                      </ProtectedRoute>
+                    } />
                     
-                    {/* Admin routes */}
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    {/* Admin routes - Admin Only */}
+                    <Route path="/admin/dashboard" element={
+                      <ProtectedRoute requireAdmin={true}>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Catch all route - redirect to home */}
                     <Route path="*" element={<Navigate to="/home" replace />} />
