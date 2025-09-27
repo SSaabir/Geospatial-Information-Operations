@@ -2,6 +2,9 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext();
 
+// API configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -13,58 +16,228 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState(null);
+  const [refreshToken, setRefreshToken] = useState(null);
+
+  // API helper function
+  const apiCall = async (endpoint, options = {}) => {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    // Add authorization header if access token exists
+    if (accessToken && !config.headers.Authorization) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    try {
+      const response = await fetch(url, config);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || `HTTP error! status: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('API call error:', error);
+      throw error;
+    }
+  };
 
   // Check for existing login on app start
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
-    if (savedUser) {
+    const initializeAuth = async () => {
       try {
-        setUser(JSON.parse(savedUser));
+        const savedAccessToken = localStorage.getItem('access_token');
+        const savedRefreshToken = localStorage.getItem('refresh_token');
+        const savedUser = localStorage.getItem('user');
+
+        if (savedAccessToken && savedUser) {
+          setAccessToken(savedAccessToken);
+          setRefreshToken(savedRefreshToken);
+          
+          try {
+            setUser(JSON.parse(savedUser));
+            
+            // Verify token is still valid
+            await apiCall('/auth/verify-token', {
+              headers: {
+                Authorization: `Bearer ${savedAccessToken}`,
+              },
+            });
+          } catch (error) {
+            console.error('Token verification failed:', error);
+            // Try to refresh token
+            if (savedRefreshToken) {
+              try {
+                await refreshAccessToken(savedRefreshToken);
+              } catch (refreshError) {
+                console.error('Token refresh failed:', refreshError);
+                clearAuthData();
+              }
+            } else {
+              clearAuthData();
+            }
+          }
+        }
       } catch (error) {
-        console.error('Error parsing saved user:', error);
-        localStorage.removeItem('user');
+        console.error('Error initializing auth:', error);
+        clearAuthData();
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    initializeAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const clearAuthData = () => {
+    setUser(null);
+    setAccessToken(null);
+    setRefreshToken(null);
+    localStorage.removeItem('user');
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  };
+
+  const refreshAccessToken = async (refresh_token) => {
+    try {
+      const response = await apiCall('/auth/refresh', {
+        method: 'POST',
+        body: JSON.stringify({ refresh_token }),
+      });
+
+      setAccessToken(response.access_token);
+      localStorage.setItem('access_token', response.access_token);
+      
+      return response.access_token;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      clearAuthData();
+      throw error;
+    }
+  };
+
+  const login = async (username, password) => {
     try {
       setIsLoading(true);
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      // For demo purposes, accept any email/password combination
-      // In a real app, you'd validate against your backend
-      const userData = {
-        id: Date.now(),
-        email: email,
-        name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        loginTime: new Date().toISOString()
-      };
-      
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
+      const response = await apiCall('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ username, password }),
+      });
+
+      // Store tokens and user data
+      setAccessToken(response.access_token);
+      setRefreshToken(response.refresh_token);
+      setUser(response.user);
+
+      localStorage.setItem('access_token', response.access_token);
+      localStorage.setItem('refresh_token', response.refresh_token);
+      localStorage.setItem('user', JSON.stringify(response.user));
+
       return { success: true };
     } catch (error) {
-      return { success: false, error: 'Login failed. Please try again.' };
+      console.error('Login error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Login failed. Please try again.' 
+      };
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const register = async (userData) => {
+    try {
+      setIsLoading(true);
+      
+      const response = await apiCall('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+
+      return { success: true, user: response };
+    } catch (error) {
+      console.error('Registration error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Registration failed. Please try again.' 
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      if (accessToken) {
+        await apiCall('/auth/logout', {
+          method: 'POST',
+        });
+      }
+    } catch (error) {
+      console.error('Logout API call failed:', error);
+      // Continue with local logout even if API call fails
+    } finally {
+      clearAuthData();
+    }
+  };
+
+  const updateProfile = async (updateData) => {
+    try {
+      const response = await apiCall('/auth/me', {
+        method: 'PUT',
+        body: JSON.stringify(updateData),
+      });
+
+      setUser(response);
+      localStorage.setItem('user', JSON.stringify(response));
+      
+      return { success: true, user: response };
+    } catch (error) {
+      console.error('Profile update error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Profile update failed. Please try again.' 
+      };
+    }
+  };
+
+  const changePassword = async (passwordData) => {
+    try {
+      await apiCall('/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify(passwordData),
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Password change error:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Password change failed. Please try again.' 
+      };
+    }
   };
 
   const value = {
     user,
     login,
+    register,
     logout,
+    updateProfile,
+    changePassword,
     isLoading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    accessToken,
+    apiCall, // Expose apiCall for other components to use authenticated requests
   };
 
   return (
