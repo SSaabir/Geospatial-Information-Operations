@@ -55,7 +55,7 @@ function App() {
                         <Dashboard />
                       </ProtectedRoute>
                     } />
-                    <Route path="/orchestrator" element={
+                    <Route path="/workflow" element={
                       <ProtectedRoute>
                         <OrchestratorDashboard />
                       </ProtectedRoute>

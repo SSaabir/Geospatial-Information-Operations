@@ -21,7 +21,7 @@ from datetime import datetime
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
-from orchestrator import run_orchestrator_workflow, get_workflow_summary, classify_user_intent
+from orchestrator import run_orchestrator_workflow, classify_user_intent
 
 from security.auth_middleware import get_current_user, get_optional_user
 from models.user import UserDB
@@ -36,7 +36,7 @@ orchestrator_router = APIRouter(prefix="/orchestrator", tags=["Orchestrator"])
 # Database configuration  
 db_config = DatabaseConfig()
 
-def get_db() -> Session:
+def get_db():
     """Get database session"""
     db = db_config.get_session()
     try:

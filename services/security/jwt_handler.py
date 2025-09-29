@@ -217,25 +217,7 @@ class JWTHandler:
         import hashlib
         return hashlib.sha256(token.encode()).hexdigest()
     
-    def get_token_expiry(self, token: str) -> Optional[datetime]:
-        """
-        Get token expiration time
-        
-        Args:
-            token: JWT token
-            
-        Returns:
-            datetime: Token expiration time or None
-        """
-        try:
-            payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
-            exp = payload.get("exp")
-            if exp:
-                return datetime.fromtimestamp(exp, timezone.utc)
-        except Exception as e:
-            logger.error(f"Failed to get token expiry: {e}")
-        
-        return None
+
 
 # Global JWT handler instance
 jwt_handler = JWTHandler()

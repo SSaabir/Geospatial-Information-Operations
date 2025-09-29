@@ -4,7 +4,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from typing import Optional
 from datetime import datetime
-import bcrypt
 
 Base = declarative_base()
 
@@ -25,15 +24,7 @@ class UserDB(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
     avatar_url = Column(Text, nullable=True)
     
-    def verify_password(self, password: str) -> bool:
-        """Verify password against hash"""
-        return bcrypt.checkpw(password.encode('utf-8'), self.hashed_password.encode('utf-8'))
-    
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """Hash password using bcrypt"""
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
 
 # Pydantic Models for API
 class UserBase(BaseModel):

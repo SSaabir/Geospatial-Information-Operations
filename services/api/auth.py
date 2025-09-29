@@ -1,11 +1,3 @@
-"""
-Authentication API Endpoints
-
-This module provides REST API endpoints for user authentication including
-registration, login, logout, token refresh, and user management.
-
-Author: Saabir
-"""
 
 from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
 from fastapi.security import HTTPAuthorizationCredentials

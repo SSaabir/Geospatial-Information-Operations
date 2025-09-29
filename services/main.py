@@ -1,12 +1,3 @@
-"""
-Main FastAPI Application for Geospatial Information Operations
-
-This is the main entry point for the FastAPI application that provides
-JWT authentication, climate data analysis, and geospatial operations.
-
-Author: Saabir
-"""
-
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -133,17 +124,7 @@ async def root():
         "health": "/health"
     }
 
-# Protected example endpoint
-from security.auth_middleware import get_current_user
 
-@app.get("/protected", tags=["Example"])
-async def protected_route(current_user: UserDB = Depends(get_current_user)):
-    """Example protected route that requires authentication"""
-    return {
-        "message": f"Hello {current_user.username}! This is a protected route.",
-        "user_id": current_user.id,
-        "is_admin": current_user.is_admin
-    }
 
 # Run the application
 if __name__ == "__main__":
