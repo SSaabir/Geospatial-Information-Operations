@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, Cloud, Thermometer, Droplets, Wind, Sun, Eye, Calendar, MapPin, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
+import { TrendingUp, Thermometer, Droplets, Wind, Sun, Eye, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Dashboard() {
@@ -8,44 +8,41 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
 
-  // Sample dashboard data
-  const temperatureData = [
-    { time: '00:00', temp: 24, humidity: 78, pressure: 1013 },
-    { time: '03:00', temp: 22, humidity: 82, pressure: 1014 },
-    { time: '06:00', temp: 26, humidity: 75, pressure: 1015 },
-    { time: '09:00', temp: 29, humidity: 68, pressure: 1016 },
-    { time: '12:00', temp: 32, humidity: 62, pressure: 1014 },
-    { time: '15:00', temp: 34, humidity: 58, pressure: 1012 },
-    { time: '18:00', temp: 31, humidity: 65, pressure: 1013 },
-    { time: '21:00', temp: 28, humidity: 72, pressure: 1015 }
-  ];
+  // State for fetched data
+  const [temperatureData, setTemperatureData] = useState([]);
+  const [weeklyData, setWeeklyData] = useState([]);
+  const [regionData, setRegionData] = useState([]);
+  const [alerts, setAlerts] = useState([]);
 
-  const weeklyData = [
-    { day: 'Mon', temp: 30, rainfall: 5, wind: 12 },
-    { day: 'Tue', temp: 32, rainfall: 0, wind: 8 },
-    { day: 'Wed', temp: 29, rainfall: 15, wind: 15 },
-    { day: 'Thu', temp: 31, rainfall: 2, wind: 10 },
-    { day: 'Fri', temp: 33, rainfall: 0, wind: 6 },
-    { day: 'Sat', temp: 28, rainfall: 25, wind: 18 },
-    { day: 'Sun', temp: 30, rainfall: 8, wind: 14 }
-  ];
+  // Fetch backend data
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
-  const regionData = [
-    { name: 'Colombo', value: 35, color: '#8B5CF6' },
-    { name: 'Kandy', value: 25, color: '#A78BFA' },
-    { name: 'Galle', value: 20, color: '#C4B5FD' },
-    { name: 'Jaffna', value: 20, color: '#DDD6FE' }
-  ];
+    const fetchDashboardData = async () => {
+      try {
+        const tempRes = await fetch('http://localhost:8000/api/weather/latest');
+        const tempData = await tempRes.json();
+        setTemperatureData(tempData);
 
-  const alerts = [
-    { id: 1, type: 'warning', message: 'Heavy rainfall expected in Western Province', time: '2 hours ago' },
-    { id: 2, type: 'info', message: 'Temperature rising trend detected', time: '4 hours ago' },
-    { id: 3, type: 'success', message: 'Data sync completed successfully', time: '6 hours ago' }
-  ];
+        const weeklyRes = await fetch('http://localhost:8000/api/weather/weekly');
+        setWeeklyData(await weeklyRes.json());
+
+        const regionRes = await fetch('http://localhost:8000/api/weather/regions');
+        setRegionData(await regionRes.json());
+
+        const alertsRes = await fetch('http://localhost:8000/api/weather/alerts');
+        setAlerts(await alertsRes.json());
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      }
+    };
+
+    fetchDashboardData();
+  }, [isAuthenticated, selectedTimeRange]);
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{ backgroundColor: '#F5EFFF' }}>
         <div className="text-center p-8">
           <Activity className="w-16 h-16 text-purple-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Dashboard Access Restricted</h2>
@@ -62,7 +59,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{backgroundColor: '#F5EFFF'}}>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{ backgroundColor: '#F5EFFF' }}>
       <div className="container mx-auto px-4 py-8">
         {/* Dashboard Header */}
         <div className="mb-8">
@@ -76,7 +73,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center space-x-4">
-              <select 
+              <select
                 value={selectedTimeRange}
                 onChange={(e) => setSelectedTimeRange(e.target.value)}
                 className="px-4 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
@@ -92,11 +89,14 @@ export default function Dashboard() {
 
         {/* Quick Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Current Temperature */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Current Temperature</p>
-                <p className="text-2xl font-bold text-gray-800">32°C</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {temperatureData.length ? `${temperatureData[temperatureData.length - 1].temp}°C` : '...'}
+                </p>
                 <p className="text-green-600 text-xs flex items-center mt-1">
                   <TrendingUp className="w-3 h-3 mr-1" /> +2.5° from yesterday
                 </p>
@@ -107,11 +107,14 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Humidity */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Humidity</p>
-                <p className="text-2xl font-bold text-gray-800">68%</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {temperatureData.length ? `${temperatureData[temperatureData.length - 1].humidity}%` : '...'}
+                </p>
                 <p className="text-blue-600 text-xs flex items-center mt-1">
                   <Droplets className="w-3 h-3 mr-1" /> Normal range
                 </p>
@@ -122,11 +125,14 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* Wind Speed */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Wind Speed</p>
-                <p className="text-2xl font-bold text-gray-800">12 km/h</p>
+                <p className="text-2xl font-bold text-gray-800">
+                  {weeklyData.length ? `${weeklyData[weeklyData.length - 1].wind} km/h` : '...'}
+                </p>
                 <p className="text-gray-600 text-xs flex items-center mt-1">
                   <Wind className="w-3 h-3 mr-1" /> Light breeze
                 </p>
@@ -137,6 +143,7 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {/* UV Index */}
           <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
             <div className="flex items-center justify-between">
               <div>
@@ -164,8 +171,8 @@ export default function Dashboard() {
                   <button
                     onClick={() => setActiveTab('temperature')}
                     className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                      activeTab === 'temperature' 
-                        ? 'bg-purple-100 text-purple-700' 
+                      activeTab === 'temperature'
+                        ? 'bg-purple-100 text-purple-700'
                         : 'text-gray-600 hover:text-purple-600'
                     }`}
                   >
@@ -174,8 +181,8 @@ export default function Dashboard() {
                   <button
                     onClick={() => setActiveTab('humidity')}
                     className={`px-3 py-1 rounded-lg text-sm transition-colors ${
-                      activeTab === 'humidity' 
-                        ? 'bg-purple-100 text-purple-700' 
+                      activeTab === 'humidity'
+                        ? 'bg-purple-100 text-purple-700'
                         : 'text-gray-600 hover:text-purple-600'
                     }`}
                   >
@@ -189,24 +196,24 @@ export default function Dashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis dataKey="time" stroke="#6B7280" fontSize={12} />
                     <YAxis stroke="#6B7280" fontSize={12} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{
                         backgroundColor: 'white',
                         border: '1px solid #D1D5DB',
                         borderRadius: '12px',
-                        boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)'
+                        boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)',
                       }}
                     />
                     <defs>
                       <linearGradient id="tempGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.05}/>
+                        <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <Area 
-                      type="monotone" 
-                      dataKey={activeTab === 'temperature' ? 'temp' : 'humidity'} 
-                      stroke="#8B5CF6" 
+                    <Area
+                      type="monotone"
+                      dataKey={activeTab === 'temperature' ? 'temp' : 'humidity'}
+                      stroke="#8B5CF6"
                       strokeWidth={3}
                       fill="url(#tempGradient)"
                     />
@@ -223,14 +230,7 @@ export default function Dashboard() {
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie
-                      data={regionData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={40}
-                      outerRadius={80}
-                      dataKey="value"
-                    >
+                    <Pie data={regionData} cx="50%" cy="50%" innerRadius={40} outerRadius={80} dataKey="value">
                       {regionData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -243,10 +243,7 @@ export default function Dashboard() {
                 {regionData.map((region, index) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: region.color }}
-                      ></div>
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: region.color }}></div>
                       <span className="text-sm text-gray-600">{region.name}</span>
                     </div>
                     <span className="text-sm font-medium text-gray-800">{region.value}%</span>
@@ -261,10 +258,11 @@ export default function Dashboard() {
               <div className="space-y-3">
                 {alerts.map((alert) => (
                   <div key={alert.id} className="flex items-start space-x-3 p-3 rounded-xl bg-gray-50">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      alert.type === 'warning' ? 'bg-yellow-100' :
-                      alert.type === 'info' ? 'bg-blue-100' : 'bg-green-100'
-                    }`}>
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        alert.type === 'warning' ? 'bg-yellow-100' : alert.type === 'info' ? 'bg-blue-100' : 'bg-green-100'
+                      }`}
+                    >
                       {alert.type === 'warning' && <AlertTriangle className="w-3 h-3 text-yellow-600" />}
                       {alert.type === 'info' && <Eye className="w-3 h-3 text-blue-600" />}
                       {alert.type === 'success' && <CheckCircle className="w-3 h-3 text-green-600" />}
@@ -290,12 +288,12 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="day" stroke="#6B7280" fontSize={12} />
                   <YAxis stroke="#6B7280" fontSize={12} />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{
                       backgroundColor: 'white',
                       border: '1px solid #D1D5DB',
                       borderRadius: '12px',
-                      boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)'
+                      boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.1)',
                     }}
                   />
                   <Bar dataKey="temp" fill="#8B5CF6" radius={[4, 4, 0, 0]} />
