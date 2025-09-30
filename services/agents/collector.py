@@ -13,9 +13,40 @@ import psycopg2
 from langchain_experimental.sql import SQLDatabaseChain
 from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
-import re, json, time, os
+
+import re, time, os
 from datetime import date, datetime
 from dotenv import load_dotenv
+from dotenv import load_dotenv
+
+# ====================================================================
+# TOKEN OPTIMIZATION AND CACHING
+# ====================================================================
+
+# Simple in-memory cache for database results (in production, use Redis)
+query_cache = {}
+cache_expiry = {}
+CACHE_DURATION = 300  # 5 minutes
+
+def get_cached_result(query_hash: str):
+    """Get cached result if available and not expired"""
+    import time
+    current_time = time.time()
+    
+    if query_hash in query_cache and query_hash in cache_expiry:
+        if current_time < cache_expiry[query_hash]:
+            return query_cache[query_hash]
+        else:
+            # Remove expired cache
+            del query_cache[query_hash]
+            del cache_expiry[query_hash]
+    return None
+
+def cache_result(query_hash: str, result: str):
+    """Cache result with expiry"""
+    import time
+    query_cache[query_hash] = result
+    cache_expiry[query_hash] = time.time() + CACHE_DURATION
 
 # Load environment variables
 load_dotenv()
@@ -140,8 +171,17 @@ def upload_to_postgresql(file_path: str) -> str:
 def query_postgresql_tool(question: str) -> str:
     """
     Safely convert a natural-language question into a SQL SELECT using LangChain's SQLDatabaseChain.
+    Implements intelligent result truncation and caching to prevent token limit issues.
     """
-
+    import hashlib
+    
+    # Create cache key
+    query_hash = hashlib.md5(question.encode()).hexdigest()
+    
+    # Check cache first
+    cached_result = get_cached_result(query_hash)
+    if cached_result:
+        return cached_result
 
     audit_path = os.environ.get("SQL_AUDIT_LOG", "sql_audit.log")
 
@@ -157,26 +197,98 @@ def query_postgresql_tool(question: str) -> str:
             return match.group(0).strip()
         return text.strip()
 
+    def summarize_large_result(rows, max_rows=50, max_length=5000):
+        """
+        Intelligently summarize large datasets to prevent token overflow.
+        Returns a summary with key statistics and sample data.
+        """
+        if not rows or len(rows) == 0:
+            return {"rows": [], "summary": "No data found"}
+
+        total_rows = len(rows)
+        
+        # If result is small, return as-is
+        if total_rows <= max_rows:
+            result_str = json.dumps(rows, default=str)
+            if len(result_str) <= max_length:
+                return {"rows": rows, "summary": f"Complete dataset with {total_rows} records"}
+
+        # For large datasets, create intelligent summary
+        sample_size = min(max_rows, total_rows)
+        sample_rows = rows[:sample_size]
+        
+        # Generate statistics if numeric columns exist
+        summary_stats = {}
+        if rows and isinstance(rows[0], dict):
+            first_row = rows[0]
+            for key, value in first_row.items():
+                try:
+                    # Check if column contains numeric data
+                    numeric_values = []
+                    for row in rows[:100]:  # Sample first 100 for stats
+                        if isinstance(row, dict) and key in row:
+                            val = row[key]
+                            if isinstance(val, (int, float)) and val is not None:
+                                numeric_values.append(val)
+                    
+                    if len(numeric_values) > 5:  # If we have enough numeric data
+                        summary_stats[key] = {
+                            "count": len(numeric_values),
+                            "min": min(numeric_values),
+                            "max": max(numeric_values),
+                            "avg": round(sum(numeric_values) / len(numeric_values), 2)
+                        }
+                except:
+                    continue
+        
+        summary = {
+            "total_records": total_rows,
+            "sample_size": sample_size,
+            "showing": f"First {sample_size} records out of {total_rows} total",
+            "statistics": summary_stats if summary_stats else "No numeric data found"
+        }
+        
+        return {
+            "rows": sample_rows,
+            "summary": summary,
+            "truncated": True,
+            "note": f"Dataset truncated to prevent token overflow. Showing {sample_size}/{total_rows} records."
+        }
+
     # Step 1: generate SQL
     try:
         sql_raw = sql_chain.invoke({"question": question})
         sql_clean = extract_sql(str(sql_raw)).rstrip(";")
     except Exception as e:
-        return json.dumps({"error": "sql_generation_failed", "details": str(e)})
+        error_result = json.dumps({"error": "sql_generation_failed", "details": str(e)})
+        cache_result(query_hash, error_result)
+        return error_result
 
     # Step 2: safety checks
     banned = r"\b(drop|delete|update|insert|alter|grant|truncate|create|replace|merge|shutdown)\b"
     if re.search(banned, sql_clean, flags=re.IGNORECASE):
-        return json.dumps({"error": "disallowed_statement"})
+        error_result = json.dumps({"error": "disallowed_statement"})
+        return error_result
 
     if not re.match(r"^\s*(select|with)\b", sql_clean, flags=re.IGNORECASE):
-        return json.dumps({"error": "not_select", "raw": str(sql_raw)})
+        error_result = json.dumps({"error": "not_select", "raw": str(sql_raw)})
+        return error_result
 
-    # Step 3: enforce LIMIT
+    # Step 3: enforce reasonable LIMIT for token management
+    max_limit = 200  # Further reduced for token safety
     if not re.search(r"\blimit\b", sql_clean, flags=re.IGNORECASE):
-        sql_exec = sql_clean + " LIMIT 100"
+        sql_exec = sql_clean + f" LIMIT {max_limit}"
     else:
-        sql_exec = sql_clean
+        # Extract existing limit and cap it
+        limit_match = re.search(r"\blimit\s+(\d+)", sql_clean, flags=re.IGNORECASE)
+        if limit_match:
+            existing_limit = int(limit_match.group(1))
+            if existing_limit > max_limit:
+                sql_exec = re.sub(r"\blimit\s+\d+", f"LIMIT {max_limit}", sql_clean, flags=re.IGNORECASE)
+            else:
+                sql_exec = sql_clean
+        else:
+            sql_exec = sql_clean
 
     # Step 4: audit
     try:
@@ -189,7 +301,8 @@ def query_postgresql_tool(question: str) -> str:
     try:
         raw = db.run(sql_exec)
     except Exception as e:
-        return json.dumps({"error": "execution_failed", "details": str(e), "sql": sql_exec})
+        error_result = json.dumps({"error": "execution_failed", "details": str(e), "sql": sql_exec})
+        return error_result
 
     # Normalize rows
     def normalize_rows(r):
@@ -198,9 +311,41 @@ def query_postgresql_tool(question: str) -> str:
         return str(r)
 
     rows = normalize_rows(raw)
-    output = {"sql": sql_exec, "row_count": len(rows), "rows": rows}
+    
+    # Apply intelligent summarization
+    result_data = summarize_large_result(rows, max_rows=30, max_length=3000)  # More conservative limits
+    
+    output = {
+        "sql": sql_exec,
+        "row_count": len(rows),
+        "data": result_data,
+        "token_optimized": True,
+        "cached": False
+    }
 
-    return json.dumps(output, default=str)
+    # Final safety check for JSON size
+    output_str = json.dumps(output, default=str)
+    if len(output_str) > 6000:  # Conservative limit
+        # Emergency truncation
+        emergency_summary = {
+            "sql": sql_exec,
+            "row_count": len(rows),
+            "data": {
+                "rows": rows[:5] if rows else [],  # Only 5 rows in emergency
+                "summary": f"Large dataset with {len(rows)} records. Emergency truncation applied.",
+                "truncated": True,
+                "note": "Result heavily truncated due to size constraints"
+            },
+            "token_optimized": True,
+            "emergency_truncated": True,
+            "cached": False
+        }
+        output_str = json.dumps(emergency_summary, default=str)
+
+    # Cache the result
+    cache_result(query_hash, output_str)
+    
+    return output_str
 
 
 
@@ -520,6 +665,58 @@ app = graph.compile()
 
 
 def run_collector_agent(query: str) -> str:
+
+    """
+    Run the collector agent with the given query and return the optimized output.
+    Includes additional token optimization at the agent level.
+    """
+    import json  # Import at function start to avoid conflicts
+    
+    try:
+        result = app.invoke({"input": query})
+        output = result.get("output", "")
+        
+        # Apply additional token optimization at agent level
+        if len(output) > 10000:  # If output is very large
+            try:
+                # Try to parse and summarize if it's JSON
+                data = json.loads(output)
+                
+                # Create a summarized version
+                summary = {
+                    "query": query,
+                    "result_type": "summarized",
+                    "data_summary": "Large dataset truncated for token efficiency",
+                    "note": "Full data available through direct database queries"
+                }
+                
+                # Include key statistics if available
+                if isinstance(data, dict):
+                    if "row_count" in data:
+                        summary["record_count"] = data["row_count"]
+                    if "data" in data and isinstance(data["data"], dict):
+                        if "summary" in data["data"]:
+                            summary["statistics"] = data["data"]["summary"]
+                        if "rows" in data["data"] and len(data["data"]["rows"]) > 0:
+                            summary["sample_data"] = data["data"]["rows"][:3]  # Just 3 sample rows
+                
+                return json.dumps(summary, default=str)
+                
+            except (json.JSONDecodeError, Exception):
+                # If not JSON or parsing fails, truncate as text
+                truncated = output[:5000] + "... [TRUNCATED FOR TOKEN EFFICIENCY]"
+                return truncated
+        
+        return output
+        
+    except Exception as e:
+        error_response = {
+            "error": f"Collector agent failed: {str(e)}",
+            "query": query,
+            "note": "Please try a more specific query or contact support"
+        }
+        return json.dumps(error_response)
+
     """Run the collector agent with the given query and return the output."""
     result = app.invoke({"input": query})
     return result["output"]
