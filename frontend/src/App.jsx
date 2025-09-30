@@ -12,6 +12,10 @@ import WeatherPredictor from './pages/WeatherPredictor'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
+import OrchestratorDashboard from './pages/OrchestratorDashboard'
+import SecurityDashboard from './pages/SecurityDashboard'
+import AIEthicsDashboard from './pages/AIEthicsDashboard'
+import Phase3Demo from './pages/Phase3Demo'
 import AdminDashboard from './pages/admin/AdminDashboard'
 
 // Import layout components
@@ -46,10 +50,34 @@ function App() {
                     <Route path="/faq" element={<FaqPage />} />
                     <Route path="/terms" element={<TermsAndConditions />} />
                     <Route path="/weather-predictor" element={<WeatherPredictor />} />
+                    <Route path="/phase3-demo" element={<Phase3Demo />} />
                     
-                    {/* Dashboard routes */}
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/chat" element={<Chat />} />
+                    {/* Dashboard routes - Protected */}
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/workflow" element={
+                      <ProtectedRoute>
+                        <OrchestratorDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/security" element={
+                      <ProtectedRoute>
+                        <SecurityDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/ai-ethics" element={
+                      <ProtectedRoute>
+                        <AIEthicsDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/chat" element={
+                      <ProtectedRoute>
+                        <Chat />
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Admin routes */}
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
