@@ -13,6 +13,7 @@ import psycopg2
 from langchain_experimental.sql import SQLDatabaseChain
 from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
+
 import re, time, os
 from datetime import date, datetime
 from dotenv import load_dotenv
@@ -366,8 +367,12 @@ def fetch_weather_tool (tool_input: str) -> str:
 
 def fetch_and_store_weather(city="Colombo", date="yesterday"):
     """Fetch weather data from API and store in PostgreSQL."""
+    # Clean up date parameter to avoid URL encoding issues
+    import urllib.parse
+    clean_date = urllib.parse.quote(date.strip(), safe='')
+    
     # API Call
-    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{date}?unitGroup=metric&include=days&key=KGCW7SXGVXRYL7ZK7W7SEJSR8&contentType=json"
+    url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{clean_date}?unitGroup=metric&include=days&key=KGCW7SXGVXRYL7ZK7W7SEJSR8&contentType=json"
     ResultBytes = urllib.request.urlopen(url)
     jsonData = json.load(ResultBytes)
     day = jsonData["days"][0]
@@ -660,6 +665,7 @@ app = graph.compile()
 
 
 def run_collector_agent(query: str) -> str:
+
     """
     Run the collector agent with the given query and return the optimized output.
     Includes additional token optimization at the agent level.
@@ -710,6 +716,10 @@ def run_collector_agent(query: str) -> str:
             "note": "Please try a more specific query or contact support"
         }
         return json.dumps(error_response)
+
+    """Run the collector agent with the given query and return the output."""
+    result = app.invoke({"input": query})
+    return result["output"]
 
 
 # ====================================================================

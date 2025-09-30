@@ -218,7 +218,7 @@ class TrendAgent:
             return {"slope": 0, "intercept": 0, "r_value": 0, "p_value": 1, 
                     "error": f"Error calculating trend: {str(e)}"}
     
-    def generate_visualizations(self, start_date=None, end_date=None, output_dir="visualizations"):
+    def generate_visualizations(self, start_date=None, end_date=None, output_dir="agents/visualizations"):
         """
         Generate climate trend visualizations
         
@@ -440,12 +440,12 @@ def generate_trend_visualizations_tool(tool_input: str) -> str:
         agent = get_trend_agent()
         
         # Parse input parameters
-        start_date, end_date, output_dir = None, None, "visualizations"
+        start_date, end_date, output_dir = None, None, "agents/visualizations"
         if "=" in tool_input:
             params = dict(item.split("=") for item in tool_input.split(";") if "=" in item)
             start_date = params.get("start_date")
             end_date = params.get("end_date")
-            output_dir = params.get("output_dir", "visualizations")
+            output_dir = params.get("output_dir", "agents/visualizations")
         
         # Generate visualizations
         plot_paths = agent.generate_visualizations(start_date, end_date, output_dir)
@@ -547,7 +547,7 @@ def visualization_node(state: TrendState) -> TrendState:
         # Build tool input from state
         tool_input = ""
         if state.get("start_date") and state.get("end_date"):
-            tool_input = f"start_date={state['start_date']};end_date={state['end_date']};output_dir=visualizations"
+            tool_input = f"start_date={state['start_date']};end_date={state['end_date']};output_dir=agents/visualizations"
         else:
             tool_input = "generate"
         

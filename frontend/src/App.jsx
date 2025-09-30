@@ -21,6 +21,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 // Import layout components
 import Header from './components/Header'
 import Footer from './components/Footer'
+import ProtectedRoute from './components/ProtectedRoute'
 
 // Import context providers
 import { AuthProvider } from './contexts/AuthContext'
@@ -63,6 +64,7 @@ function App() {
                         <OrchestratorDashboard />
                       </ProtectedRoute>
                     } />
+
                     <Route path="/security" element={
                       <ProtectedRoute>
                         <SecurityDashboard />
@@ -73,14 +75,19 @@ function App() {
                         <AIEthicsDashboard />
                       </ProtectedRoute>
                     } />
+
                     <Route path="/chat" element={
                       <ProtectedRoute>
                         <Chat />
                       </ProtectedRoute>
                     } />
                     
-                    {/* Admin routes */}
-                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    {/* Admin routes - Admin Only */}
+                    <Route path="/admin/dashboard" element={
+                      <ProtectedRoute requireAdmin={true}>
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    } />
                     
                     {/* Catch all route - redirect to home */}
                     <Route path="*" element={<Navigate to="/home" replace />} />

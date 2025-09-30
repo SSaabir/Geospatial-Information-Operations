@@ -1,12 +1,3 @@
-"""
-Database Configuration Module for Geospatial Information Operations
-
-This module provides centralized database connection management using environment variables.
-It handles PostgreSQL connections with proper error handling and connection pooling.
-
-Author: Saabir
-"""
-
 import os
 import logging
 from typing import Optional

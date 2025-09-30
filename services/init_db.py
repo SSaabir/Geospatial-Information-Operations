@@ -1,15 +1,3 @@
-"""
-Database Initialization Script
-
-This script creates the database tables and optionally creates an admin user
-for the Geospatial Information Operations system.
-
-Usage:
-    python init_db.py [--create-admin]
-
-Author: Saabir
-"""
-
 import sys
 import os
 import argparse

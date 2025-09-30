@@ -84,6 +84,20 @@ keys/
 *.db
 *.sqlite3
 
+# SQL audit logs (generated files)
+sql_audit.log
+**/sql_audit.log
+
+# Weather collection results (temporary data)
+weather_collection_results_*.json
+daily_weather_report_*.json
+*.log
+
+# Visualization files (generated)
+**/visualizations/*.png
+**/visualizations/*.jpg
+**/visualizations/*.svg
+
 # Node (React frontend)
 node_modules/
 npm-debug.log*
