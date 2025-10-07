@@ -4,6 +4,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { Menu, X, TrendingUp, Cloud, MessageSquare, FileText, Home, Info, Mail, HelpCircle, FileCheck, LogIn, LogOut, ChevronDown, Sun, Thermometer, Droplets, Wind, User } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ChatWindow from '../components/ChatWindow';
+import Pricing from './Pricing';
 
 const ClimateHomepage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -317,6 +318,13 @@ const ClimateHomepage = () => {
               <p className="text-gray-600">Generate detailed reports tailored to your specific research needs and data requirements.</p>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Pricing embedded into home */}
+      <section id="pricing" className="py-20 px-4 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <Pricing />
         </div>
       </section>
 

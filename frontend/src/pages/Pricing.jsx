@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Lock, Zap, Brain, BarChart3, FileText, Database, Cloud } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const plans = [
   {
@@ -47,6 +48,7 @@ const plans = [
 
 export default function Pricing() {
   const { user, tier, changeTier, apiCall } = useAuth();
+  const navigate = useNavigate();
   const [hoveredRow, setHoveredRow] = useState(null);
 
   const handleSelect = async (planId) => {
@@ -62,18 +64,25 @@ export default function Pricing() {
       }
       return;
     }
+    // For paid plans, create a checkout session and navigate to the checkout
+    // UI where the user can enter card details. The checkout page will call
+    // the `POST /payments/session/{id}/pay` endpoint to record payment.
     try {
-      const resp = await apiCall('/billing/create-checkout-session', {
+      const resp = await apiCall('/payments/create-session', {
         method: 'POST',
-        body: JSON.stringify({ plan_id: planId })
+        body: JSON.stringify({ plan: planId, recurring: false }),
       });
-      if (resp.url) {
-        window.location.href = resp.url;
-      } else {
-        window.alert(resp.message || 'No checkout URL.');
+
+      if (!resp || !resp.session_id) {
+        window.alert('Failed to create checkout session');
+        return;
       }
+
+      // Navigate to checkout page within the app
+      navigate(`/payments/checkout/${resp.session_id}`);
     } catch (e) {
-      window.alert(e.message || 'Failed to start checkout');
+      console.error('Create session failed', e);
+      window.alert(e.message || 'Failed to initiate checkout');
     }
   };
 

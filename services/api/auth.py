@@ -18,6 +18,7 @@ from security.jwt_handler import (
 )
 from security.auth_middleware import get_current_user, get_optional_user, security
 from db_config import DatabaseConfig
+from middleware.event_logger import log_auth_event, increment_usage_metrics
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -88,20 +89,25 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
-        
         logger.info(f"New user registered: {new_user.username}")
+        try:
+            # Log auth event (best-effort)
+            log_auth_event("register", new_user.id, True)
+            increment_usage_metrics(new_user.id, api_calls=1)
+        except Exception:
+            pass
         return UserResponse.from_orm(new_user)
         
     except IntegrityError as e:
         db.rollback()
-        logger.error(f"Database integrity error during registration: {e}")
+        logger.exception(f"Database integrity error during registration: {e}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User registration failed due to data conflict"
         )
     except Exception as e:
         db.rollback()
-        logger.error(f"Registration error: {e}")
+        logger.exception(f"Registration error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed"
@@ -133,30 +139,30 @@ async def login_user(
             (UserDB.username == user_credentials.username) | 
             (UserDB.email == user_credentials.username)
         ).first()
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
-        
+
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account is inactive"
             )
-        
+
         # Verify password
         if not verify_password(user_credentials.password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
             )
-        
+
         # Update last login timestamp
         user.last_login = datetime.now(timezone.utc)
         db.commit()
-        
+
         # Create tokens
         tokens = create_tokens_for_user({
             "id": user.id,
@@ -164,16 +170,21 @@ async def login_user(
             "email": user.email,
             "tier": getattr(user, "tier", "free")
         })
-        
+
         # Prepare response
         response_data = {
             **tokens,
             "user": UserResponse.from_orm(user).dict()
         }
-        
+
         logger.info(f"User logged in: {user.username}")
+        try:
+            log_auth_event("login", user.id, True)
+            increment_usage_metrics(user.id, api_calls=1)
+        except Exception:
+            pass
         return response_data
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -207,6 +218,10 @@ async def logout_user(
             jwt_handler.blacklist_token(token)
         
         logger.info(f"User logged out: {current_user.username}")
+        try:
+            log_auth_event("logout", current_user.id, True)
+        except Exception:
+            pass
         return {"message": "Successfully logged out"}
         
     except Exception as e:
@@ -290,16 +305,24 @@ async def change_user_tier(
                 detail="Invalid tier. Must be one of: free, researcher, professional"
             )
 
+        # Re-query user within the provided DB session to avoid detached instances
+        user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
         # No-op if tier is the same
-        if getattr(current_user, "tier", "free") == new_tier:
-            return UserResponse.from_orm(current_user)
+        if getattr(user, "tier", "free") == new_tier:
+            return UserResponse.from_orm(user)
 
-        current_user.tier = new_tier
-        current_user.updated_at = datetime.now(timezone.utc)
+        user.tier = new_tier
+        user.updated_at = datetime.now(timezone.utc)
         db.commit()
-        db.refresh(current_user)
+        db.refresh(user)
 
-        return UserResponse.from_orm(current_user)
+        return UserResponse.from_orm(user)
     except HTTPException:
         raise
     except Exception as e:

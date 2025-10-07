@@ -17,27 +17,44 @@ export default function Dashboard() {
   // Fetch backend data
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Use local fallback/mock data to avoid calling removed /api/weather endpoints
+    const now = new Date();
 
-    const fetchDashboardData = async () => {
-      try {
-        const tempRes = await fetch('http://localhost:8000/api/weather/latest');
-        const tempData = await tempRes.json();
-        setTemperatureData(tempData);
-
-        const weeklyRes = await fetch('http://localhost:8000/api/weather/weekly');
-        setWeeklyData(await weeklyRes.json());
-
-        const regionRes = await fetch('http://localhost:8000/api/weather/regions');
-        setRegionData(await regionRes.json());
-
-        const alertsRes = await fetch('http://localhost:8000/api/weather/alerts');
-        setAlerts(await alertsRes.json());
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+    const makeHourly = () => {
+      const arr = [];
+      for (let i = 0; i < 24; i++) {
+        const t = new Date(now.getTime() - (23 - i) * 60 * 60 * 1000).toISOString();
+        arr.push({ time: t, temp: 25 + (i % 6), humidity: 60 + (i % 10), wind: 6 + (i % 4) });
       }
+      return arr;
     };
 
-    fetchDashboardData();
+    const makeWeekly = () => {
+      const out = [];
+      for (let d = 6; d >= 0; d--) {
+        const day = new Date(now.getTime() - d * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        out.push({ day, temp: 26 + (d % 3), wind: 7 + (d % 3), rainfall: 0 });
+      }
+      return out;
+    };
+
+    const makeRegions = () => [
+      { name: 'Colombo', value: 45.0, color: '#8B5CF6' },
+      { name: 'Kandy', value: 20.0, color: '#06B6D4' },
+      { name: 'Galle', value: 12.0, color: '#F59E0B' },
+      { name: 'Jaffna', value: 8.0, color: '#EF4444' },
+      { name: 'Other', value: 15.0, color: '#10B981' },
+    ];
+
+    const makeAlerts = () => [
+      { id: 1, message: 'Light showers expected tomorrow in Colombo.', type: 'info', time: new Date().toISOString() },
+      { id: 2, message: 'High UV index today - take care.', type: 'warning', time: new Date().toISOString() },
+    ];
+
+    setTemperatureData(makeHourly());
+    setWeeklyData(makeWeekly());
+    setRegionData(makeRegions());
+    setAlerts(makeAlerts());
   }, [isAuthenticated, selectedTimeRange]);
 
   if (!isAuthenticated) {

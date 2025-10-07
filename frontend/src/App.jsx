@@ -20,6 +20,7 @@ import AdminDashboard from './pages/admin/AdminDashboard'
 import Pricing from './pages/Pricing'
 import Marketplace from './pages/Marketplace'
 import Analytics from './pages/Analytics'
+import Checkout from './pages/Checkout'
 
 // Import layout components
 import Header from './components/Header'
@@ -56,7 +57,7 @@ function App() {
                     <Route path="/weather-predictor" element={<WeatherPredictor />} />
                     <Route path="/phase3-demo" element={<Phase3Demo />} />
                     <Route path="/pricing" element={<Pricing />} />
-                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/payments/checkout/:sessionId" element={<Checkout />} />
                     <Route path="/analytics" element={<Analytics />} />
                     
                     {/* Dashboard routes - Protected */}

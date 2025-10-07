@@ -13,6 +13,7 @@ export default function Login() {
   });
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
+  const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -27,9 +28,30 @@ export default function Login() {
         setError(result.error);
       }
     } else {
-      // Handle signup (for demo, just switch to login)
-      setIsLogin(true);
+      // Handle signup
       setError('');
+      try {
+        // Backend expects username and confirm_password fields
+        const regPayload = {
+          username: formData.email.split('@')[0],
+          email: formData.email,
+          password: formData.password,
+          confirm_password: formData.password,
+          full_name: formData.name || undefined
+        };
+
+        const result = await register(regPayload);
+
+        if (result.success) {
+          // Registration successful: redirect user to the login page (do not auto-login)
+          navigate('/login');
+        } else {
+          setError(result.error || 'Registration failed');
+        }
+      } catch (e) {
+        console.error('Signup error:', e);
+        setError(e.message || 'Registration failed');
+      }
     }
   };
 

@@ -7,9 +7,16 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      // If logout API fails, still clear client-side and redirect
+      console.error('Logout failed:', e);
+    } finally {
+      // Use full redirect to ensure app state is reset
+      window.location.href = '/';
+    }
   };
 
   const toggleMobileMenu = () => {
@@ -21,9 +28,7 @@ export default function Header() {
     { name: 'Workflow', href: '/workflow', icon: Bot },
     { name: 'Security', href: '/security', icon: Shield },
     { name: 'AI Ethics', href: '/ai-ethics', icon: Brain },
-    { name: 'Chat Assistant', href: '/chat', icon: Bot },
-    { name: 'Pricing', href: '/pricing', icon: Cloud },
-    { name: 'Marketplace', href: '/marketplace', icon: Cloud },
+    { name: 'Chat Assistant', href: '/chat', icon: Bot }, 
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 

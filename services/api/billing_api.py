@@ -1,8 +1,16 @@
-import os
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+"""Billing API (Stripe removed).
+
+This module intentionally avoids any third-party payment provider calls.
+It provides simple, server-side tier-change endpoints for regions where
+external processors are not available. In production you should add proper
+authorization and audit logging before granting paid tiers.
+"""
+
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from models.user import UserResponse
 from sqlalchemy.orm import Session
-import stripe
 
 from security.auth_middleware import get_current_user
 from models.user import UserDB
@@ -22,86 +30,94 @@ def get_db():
         db.close()
 
 
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
+class ChangeTierRequest(BaseModel):
+    tier: str
 
 
 class CheckoutRequest(BaseModel):
     plan_id: str
 
 
-def _price_for_plan(plan_id: str) -> str:
-    if plan_id == "researcher":
-        price = os.getenv("STRIPE_PRICE_RESEARCHER", "")
-    elif plan_id == "professional":
-        price = os.getenv("STRIPE_PRICE_PROFESSIONAL", "")
-    else:
-        price = ""
-    return price
+logger = logging.getLogger(__name__)
+
+
+@billing_router.get("/plans")
+async def get_plans():
+    """Return available plans and a brief description."""
+    plans = [
+        {"id": "free", "name": "Free", "price": "$0/mo"},
+        {"id": "researcher", "name": "Researcher", "price": "$29/mo"},
+        {"id": "professional", "name": "Professional", "price": "$99/mo"},
+    ]
+    return {"plans": plans}
+
+
+@billing_router.post("/change-tier")
+async def change_tier(
+    body: ChangeTierRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Change the authenticated user's tier directly.
+
+    No external payment provider is configured in this repository. In a
+    production deployment you should add proper business rules, authorization
+    and audit logging before granting paid tiers.
+    """
+    requested = (body.tier or "").strip().lower()
+    allowed = {"free", "researcher", "professional"}
+    if requested not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid tier")
+
+    user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.tier = requested
+    db.commit()
+    db.refresh(user)
+    logger.info("User %s tier changed to %s via change-tier API", user.username, requested)
+
+    # Return a compact success response for API clients
+    # and also return the updated user object for frontend compatibility
+    return {"success": True, "tier": requested, "user": UserResponse.from_orm(user).dict()}
 
 
 @billing_router.post("/create-checkout-session")
 async def create_checkout_session(
     body: CheckoutRequest,
-    current_user: UserDB = Depends(get_current_user)
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
-    if not stripe.api_key:
-        raise HTTPException(status_code=500, detail="Stripe is not configured")
+    """Compatibility endpoint: previously used for external checkout.
 
-    plan_id = body.plan_id
-    if plan_id == "free":
-        # direct downgrade without Stripe
-        return {"url": None, "message": "Use /auth/me/tier to switch to free"}
+    Kept for compatibility with older clients. Now performs a direct tier
+    change and returns a message. No external payments are processed.
+    """
+    plan_id = (body.plan_id or "").strip().lower()
+    allowed = {"free", "researcher", "professional"}
+    if plan_id not in allowed:
+        raise HTTPException(status_code=400, detail="Invalid plan")
 
-    price_id = _price_for_plan(plan_id)
-    if not price_id:
-        raise HTTPException(status_code=400, detail="Invalid or unconfigured plan")
+    user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+    user.tier = plan_id
+    db.commit()
+    db.refresh(user)
+    logger.info("User %s tier changed to %s via create-checkout-session (compat)", user.username, plan_id)
 
-    try:
-        session = stripe.checkout.Session.create(
-            mode="subscription",
-            line_items=[{"price": price_id, "quantity": 1}],
-            success_url=f"{frontend_url}/pricing?success=true",
-            cancel_url=f"{frontend_url}/pricing?canceled=true",
-            client_reference_id=f"{current_user.id}:{plan_id}",
-            metadata={"user_id": str(current_user.id), "plan_id": plan_id},
-        )
-        return {"url": session.url}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Stripe error: {e}")
+    return {"success": True, "message": f"Tier changed to {plan_id}", "url": None, "user": UserResponse.from_orm(user).dict()}
 
 
 @billing_router.post("/webhook")
-async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
-    payload = await request.body()
-    sig_header = request.headers.get("stripe-signature")
-    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+async def billing_webhook(request: Request):
+    """No-op webhook endpoint kept for compatibility.
 
-    try:
-        if endpoint_secret:
-            event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
-        else:
-            # No verification (dev only)
-            event = stripe.Event.construct_from(request.json(), stripe.api_key)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    if event["type"] == "checkout.session.completed":
-        session = event["data"]["object"]
-        ref = session.get("client_reference_id", "")
-        try:
-            user_id_str, plan_id = ref.split(":", 1)
-            user_id = int(user_id_str)
-        except Exception:
-            user_id, plan_id = None, None
-
-        if user_id and plan_id in {"researcher", "professional"}:
-            user = db.query(UserDB).filter(UserDB.id == user_id).first()
-            if user:
-                user.tier = plan_id
-                db.commit()
-
-    return {"received": True}
+    External payment providers are not configured in this project. Webhook
+    payloads are ignored and acknowledged to avoid 404s from external systems.
+    """
+    return {"received": True, "note": "No external webhook processing configured"}
 
 

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 import logging
 import os
 from dotenv import load_dotenv
+import time
 
 # Import modules
 from models.user import Base, UserDB
@@ -16,8 +17,11 @@ from api.analytics_api import analytics_router
 from api.marketplace_api import marketplace_router
 from api.ai_ethics_api import ai_ethics_router
 from api.billing_api import billing_router
+from api.payments_api import payments_router, start_payment_expiry_worker, db_config as payments_db_config
 from db_config import DatabaseConfig
 from security.auth_middleware import AuthenticationError, AuthorizationError
+from middleware.event_logger import log_api_access
+from fastapi import Request
 
 # Load environment variables
 load_dotenv()
@@ -45,6 +49,11 @@ async def lifespan(app: FastAPI):
         logger.info("Database tables created successfully")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
+    # Start payment expiry worker
+    try:
+        start_payment_expiry_worker(payments_db_config)
+    except Exception as e:
+        logger.error(f"Failed to start payment expiry worker: {e}")
     
     yield
     
@@ -87,6 +96,7 @@ app.include_router(ai_ethics_router)
 app.include_router(analytics_router)
 app.include_router(marketplace_router)
 app.include_router(billing_router)
+app.include_router(payments_router)
 
 
 # Custom exception handlers
@@ -134,6 +144,50 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+
+
+# Simple request logging middleware (best-effort, non-blocking)
+@app.middleware("http")
+async def request_event_logger(request: Request, call_next):
+    start = time.time()
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception as e:
+        # If underlying call throws, log and re-raise
+        status_code = 500
+        raise
+    finally:
+        duration = time.time() - start
+        try:
+            user_id = None
+            # Attempt to get user info from Authorization header (best-effort)
+            auth_header = request.headers.get("authorization")
+            if auth_header and auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+                payload = None
+                try:
+                    payload = __import__('security.jwt_handler', fromlist=['jwt_handler']).jwt_handler.verify_token(token)
+                except Exception:
+                    payload = None
+                if payload and 'user_id' in payload:
+                    try:
+                        user_id = int(payload.get('user_id'))
+                    except Exception:
+                        user_id = None
+
+            log_api_access(
+                endpoint=str(request.url.path),
+                method=request.method,
+                user_id=user_id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get('user-agent'),
+                response_code=status_code,
+                response_time=duration,
+            )
+        except Exception:
+            pass
+    return response
 
 
 
