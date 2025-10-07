@@ -16,6 +16,7 @@ import logging
 import json
 import asyncio
 from datetime import datetime
+from sqlalchemy.orm import Session
 
 # Import orchestrator and agents
 import sys
@@ -26,6 +27,7 @@ from orchestrator import run_orchestrator_workflow, classify_user_intent
 from security.auth_middleware import get_current_user, get_optional_user
 from models.user import UserDB
 from db_config import DatabaseConfig
+from models.usage import UsageMetrics
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -101,6 +103,10 @@ class WorkflowPreview(BaseModel):
 # Storage for async workflows
 # -------------------------
 workflow_results = {}  # In production, use Redis or database
+# Simple per-user usage counters (in-memory placeholder)
+usage_counters = {
+    # user_id: {"api_calls": int, "reports_generated": int}
+}
 
 # -------------------------
 # API Endpoints
@@ -108,7 +114,8 @@ workflow_results = {}  # In production, use Redis or database
 @orchestrator_router.post("/preview", response_model=WorkflowPreview)
 async def preview_workflow(
     request: WorkflowRequest,
-    current_user: UserDB = Depends(get_optional_user)
+    current_user: UserDB = Depends(get_optional_user),
+    db: Session = Depends(get_db)
 ):
     """
     Preview what workflow will be executed for a given query without actually running it.
@@ -144,6 +151,15 @@ async def preview_workflow(
         
         workflow_info = workflow_mapping.get(workflow_type, workflow_mapping["data_view"])
         
+        # Count API call for preview if user is present
+        if current_user:
+            metrics = db.query(UsageMetrics).filter(UsageMetrics.user_id == current_user.id).first()
+            if not metrics:
+                metrics = UsageMetrics(user_id=current_user.id)
+                db.add(metrics)
+            metrics.api_calls += 1
+            db.commit()
+
         return WorkflowPreview(
             query=request.query,
             workflow_type=workflow_type,
@@ -187,6 +203,41 @@ async def execute_workflow(
     try:
         # Log the request
         logger.info(f"Executing workflow for user {current_user.username}: {request.query}")
+        # Increment API calls
+        metrics = db.query(UsageMetrics).filter(UsageMetrics.user_id == current_user.id).first()
+        if not metrics:
+            metrics = UsageMetrics(user_id=current_user.id)
+            db.add(metrics)
+        metrics.api_calls += 1
+        db.commit()
+
+        # Usage limit checks by tier
+        tier_limits = {
+            "free": 5,
+            "researcher": 5000,
+            "professional": float('inf')  # unlimited
+        }
+        current_limit = tier_limits.get(tier, 5)
+        if metrics.api_calls >= current_limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Usage limit exceeded ({current_limit} API calls/month). Upgrade your plan to continue."
+            )
+
+        # Entitlement checks based on inferred workflow type
+        inferred_type = classify_user_intent(request.query)
+        tier = getattr(current_user, "tier", "free")
+        tier_order = {"free": 0, "researcher": 1, "professional": 2}
+        required_tier = {
+            "data_view": "free",
+            "collect_analyze": "researcher",
+            "full_summary": "professional",
+        }.get(inferred_type, "free")
+        if tier_order.get(tier, 0) < tier_order.get(required_tier, 0):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Your plan ({tier}) does not allow '{inferred_type}' workflow. Required: {required_tier}."
+            )
         
         if request.async_execution:
             # Execute asynchronously
@@ -233,6 +284,11 @@ async def execute_workflow(
             except json.JSONDecodeError:
                 result_data = {"raw_output": workflow_result.get("final_output", "")}
             
+            # Consider report generation as part of full_summary
+            if inferred_type == "full_summary":
+                metrics.reports_generated += 1
+                db.commit()
+
             return WorkflowResponse(
                 request_id=request_id,
                 workflow_type=workflow_result.get("workflow_type", "unknown"),

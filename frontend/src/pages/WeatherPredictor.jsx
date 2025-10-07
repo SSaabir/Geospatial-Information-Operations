@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import FeatureGate from '../components/FeatureGate';
 
 const WeatherPredictor = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +18,7 @@ const WeatherPredictor = () => {
   const [datasetInfo, setDatasetInfo] = useState(null);
   const [similarConditions, setSimilarConditions] = useState(null);
   const [error, setError] = useState('');
+  const { tier } = useAuth();
 
   const handleInputChange = (e) => {
     setFormData({
@@ -40,36 +43,29 @@ const WeatherPredictor = () => {
       setError('Please fill in all required fields');
       return;
     }
-    
     setLoading(true);
     setError('');
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockResult = {
-        prediction: 'Partly Cloudy',
-        confidence: 0.87,
-        groq_explanation: 'Based on the atmospheric conditions provided, the model predicts partly cloudy weather. The temperature of 18.5°C combined with 68% humidity and sea level pressure of 1015.2 hPa suggests stable atmospheric conditions with some cloud formation likely.',
-        dataset_stats: {
-          total_occurrences: 245,
-          percentage_of_dataset: 12.3,
-          avg_temp: 18.2,
-          avg_humidity: 67.5,
-          avg_pressure: 1014.8
+      const response = await fetch('http://localhost:8000/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        processed_features: {
-          'Hour of Day': 15.5,
-          'Day of Year': 75,
-          'Pressure Normalized': 0.523,
-          'Humidity Normalized': 0.68,
-          'Temperature Normalized': 0.412,
-          'Daylight Hours': 12.25
-        }
-      };
-      
-      setPrediction(mockResult);
-      setActiveView('result');
+        body: JSON.stringify(formData)
+      });
+      const data = await response.json();
+      if (data.result) {
+        setPrediction({
+          prediction: data.result.replace('Predicted Weather Condition: ', ''),
+          confidence: null,
+          groq_explanation: '',
+          dataset_stats: {},
+          processed_features: {}
+        });
+        setActiveView('result');
+      } else {
+        setError(data.error || 'Failed to get prediction. Please try again.');
+      }
     } catch (err) {
       setError('Failed to get prediction. Please try again.');
     } finally {
@@ -261,23 +257,27 @@ const WeatherPredictor = () => {
               🔮 Predict Weather
             </button>
             
-            <button
-              type="button"
-              onClick={loadDatasetInfo}
-              className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
-            >
-              📊 Dataset Info
-            </button>
+            <FeatureGate minTier="researcher" fallback={<button disabled className="px-8 py-4 rounded-lg font-semibold text-gray-400 border-2 text-lg min-w-52" style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}>📊 Dataset Info (Locked)</button>}>
+              <button
+                type="button"
+                onClick={loadDatasetInfo}
+                className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
+                style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              >
+                📊 Dataset Info
+              </button>
+            </FeatureGate>
             
-            <button
-              type="button"
-              onClick={findSimilar}
-              className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
-            >
-              🔍 Find Similar
-            </button>
+            <FeatureGate minTier="professional" fallback={<button disabled className="px-8 py-4 rounded-lg font-semibold text-gray-400 border-2 text-lg min-w-52" style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}>🔍 Find Similar (Locked)</button>}>
+              <button
+                type="button"
+                onClick={findSimilar}
+                className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
+                style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              >
+                🔍 Find Similar
+              </button>
+            </FeatureGate>
             
             <button
               type="button"

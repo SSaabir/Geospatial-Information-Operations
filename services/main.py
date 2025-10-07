@@ -12,7 +12,10 @@ from models.user import Base, UserDB
 from api.auth import auth_router
 from api.orchestrator_api import orchestrator_router
 from api.security_api import security_router
+from api.analytics_api import analytics_router
+from api.marketplace_api import marketplace_router
 from api.ai_ethics_api import ai_ethics_router
+from api.billing_api import billing_router
 from db_config import DatabaseConfig
 from security.auth_middleware import AuthenticationError, AuthorizationError
 
@@ -81,6 +84,9 @@ app.include_router(auth_router)
 app.include_router(orchestrator_router)
 app.include_router(security_router)
 app.include_router(ai_ethics_router)
+app.include_router(analytics_router)
+app.include_router(marketplace_router)
+app.include_router(billing_router)
 
 
 # Custom exception handlers

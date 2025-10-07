@@ -229,6 +229,31 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const changeTier = async (newTier) => {
+    try {
+      const response = await apiCall('/auth/me/tier', {
+        method: 'POST',
+        body: JSON.stringify({ tier: newTier }),
+      });
+
+      setUser(response);
+      localStorage.setItem('user', JSON.stringify(response));
+      return { success: true, user: response };
+    } catch (error) {
+      console.error('Change tier error:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to change plan. Please try again.'
+      };
+    }
+  };
+
+  const getTier = () => (user?.tier || 'free');
+  const isAtLeast = (requiredTier) => {
+    const order = ['free', 'researcher', 'professional'];
+    return order.indexOf(getTier()) >= order.indexOf(requiredTier);
+  };
+
   const value = {
     user,
     login,
@@ -240,6 +265,9 @@ export const AuthProvider = ({ children }) => {
     isAuthenticated: !!user,
     accessToken,
     apiCall, // Expose apiCall for other components to use authenticated requests
+    tier: getTier(),
+    changeTier,
+    isAtLeast,
   };
 
   return (
