@@ -7,7 +7,9 @@ from datetime import datetime
 
 Base = declarative_base()
 
+# ---------------------------
 # SQLAlchemy ORM Model
+# ---------------------------
 class UserDB(Base):
     """SQLAlchemy ORM model for users table"""
     __tablename__ = "users"
@@ -24,14 +26,14 @@ class UserDB(Base):
     last_login = Column(DateTime(timezone=True), nullable=True)
     avatar_url = Column(Text, nullable=True)
     tier = Column(String(20), default="free")  # free, researcher, professional
-    
 
-
+# ---------------------------
 # Pydantic Models for API
+# ---------------------------
 class UserBase(BaseModel):
     """Base user model"""
     username: str = Field(..., min_length=3, max_length=50)
-    email: EmailStr
+    email: EmailStr  # ✅ Email validation
     full_name: Optional[str] = Field(None, max_length=100)
     is_active: bool = True
     tier: str = Field("free", description="User tier: free, researcher, professional")
@@ -44,7 +46,7 @@ class UserCreate(UserBase):
 
 class UserLogin(BaseModel):
     """User login model"""
-    username: str
+    email: EmailStr  # ✅ Login via email
     password: str
 
 class UserResponse(UserBase):
@@ -62,7 +64,7 @@ class UserResponse(UserBase):
 class UserUpdate(BaseModel):
     """User update model"""
     full_name: Optional[str] = Field(None, max_length=100)
-    email: Optional[EmailStr] = None
+    email: Optional[EmailStr] = None  # ✅ Validate updated email
     avatar_url: Optional[str] = None
 
 class ChangePassword(BaseModel):
@@ -71,7 +73,9 @@ class ChangePassword(BaseModel):
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
 
+# ---------------------------
 # Token Models
+# ---------------------------
 class Token(BaseModel):
     """JWT token response model"""
     access_token: str
