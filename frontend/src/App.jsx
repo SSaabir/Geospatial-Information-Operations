@@ -18,7 +18,6 @@ import AIEthicsDashboard from './pages/AIEthicsDashboard'
 import Phase3Demo from './pages/Phase3Demo'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import Pricing from './pages/Pricing'
-import Marketplace from './pages/Marketplace'
 import Analytics from './pages/Analytics'
 
 // Import layout components

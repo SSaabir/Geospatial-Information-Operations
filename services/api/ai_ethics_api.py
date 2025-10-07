@@ -17,12 +17,14 @@ import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
 
 try:
-    from responsible_ai import ResponsibleAIFramework
-except ImportError as e:
+    # Imported from services/agents/responsible_ai.py
+    from responsible_ai import ResponsibleAIFramework  # type: ignore
+except Exception as e:
     logging.error(f"Failed to import responsible AI module: {e}")
-    ResponsibleAIFramework = None
+    ResponsibleAIFramework = None  # type: ignore
 
 from security.auth_middleware import verify_token
+from middleware.event_logger import log_auth_event, increment_usage_metrics
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -102,7 +104,7 @@ async def get_ai_ethics_dashboard(current_user: dict = Depends(verify_token)):
                 ]
             }
         
-        # Generate comprehensive dashboard data
+    # Generate comprehensive dashboard data
         dashboard_data = {
             "overview": {
                 "overall_ethics_score": 8.7,
@@ -117,6 +119,13 @@ async def get_ai_ethics_dashboard(current_user: dict = Depends(verify_token)):
             "transparency_reports": await get_transparency_reports()
         }
         
+        try:
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("ai_ethics_dashboard_view", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
         return dashboard_data
         
     except Exception as e:
@@ -314,6 +323,13 @@ async def assess_model_ethics(
             }
         
         ethics_result = ai_framework.assess_ethics(model_data)
+        try:
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("model_assessment", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
         return ethics_result
         
     except Exception as e:
@@ -366,6 +382,15 @@ async def detect_bias_in_data(
             "bias_results": bias_result,
             "severity": "high" if len(bias_result) > 5 else "medium" if len(bias_result) > 2 else "low"
         }
+        
+        # log bias detection request
+        try:
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("bias_detection", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
         
     except Exception as e:
         logger.error(f"Failed to detect bias: {e}")
@@ -424,6 +449,15 @@ async def get_compliance_report(
         
         return report
         
+        # log compliance report generation
+        try:
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("compliance_report", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
+        
     except Exception as e:
         logger.error(f"Failed to generate compliance report: {e}")
         raise HTTPException(
@@ -476,6 +510,13 @@ async def get_model_ethics_details(
         }
         
         return model_details
+        try:
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("model_ethics_view", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
         
     except Exception as e:
         logger.error(f"Failed to get model ethics details: {e}")
@@ -512,6 +553,13 @@ async def generate_transparency_report(
             }
         
         transparency_report = ai_framework.generate_transparency_report(model_context)
+        try:
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("transparency_report_generate", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
         return transparency_report
         
     except Exception as e:

@@ -22,12 +22,22 @@ from sqlalchemy.orm import Session
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
-from orchestrator import run_orchestrator_workflow, classify_user_intent
+try:
+    # Imported from services/agents/orchestrator.py
+    from orchestrator import run_orchestrator_workflow, classify_user_intent  # type: ignore
+except Exception as e:
+    # Fallbacks for static analysis or missing module
+    run_orchestrator_workflow = None  # type: ignore
+    def classify_user_intent(query: str) -> str:
+        # conservative default
+        return "data_view"
 
 from security.auth_middleware import get_current_user, get_optional_user
 from models.user import UserDB
 from db_config import DatabaseConfig
 from models.usage import UsageMetrics
+from middleware.event_logger import log_auth_event, increment_usage_metrics
+from utils.tier import enforce_quota_or_raise, get_limit_for_tier
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -159,6 +169,11 @@ async def preview_workflow(
                 db.add(metrics)
             metrics.api_calls += 1
             db.commit()
+            try:
+                log_auth_event("workflow_preview", current_user.id, True)
+                increment_usage_metrics(current_user.id, api_calls=1)
+            except Exception:
+                pass
 
         return WorkflowPreview(
             query=request.query,
@@ -210,19 +225,14 @@ async def execute_workflow(
             db.add(metrics)
         metrics.api_calls += 1
         db.commit()
+        try:
+            log_auth_event("workflow_execute", current_user.id, True)
+            increment_usage_metrics(current_user.id, api_calls=1)
+        except Exception:
+            pass
 
         # Usage limit checks by tier
-        tier_limits = {
-            "free": 5,
-            "researcher": 5000,
-            "professional": float('inf')  # unlimited
-        }
-        current_limit = tier_limits.get(tier, 5)
-        if metrics.api_calls >= current_limit:
-            raise HTTPException(
-                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=f"Usage limit exceeded ({current_limit} API calls/month). Upgrade your plan to continue."
-            )
+        enforce_quota_or_raise(metrics, tier)
 
         # Entitlement checks based on inferred workflow type
         inferred_type = classify_user_intent(request.query)
@@ -247,6 +257,12 @@ async def execute_workflow(
                 request.query,
                 current_user.id
             )
+            try:
+                # log async execution submission
+                log_auth_event("workflow_execute_async", current_user.id, True)
+                increment_usage_metrics(current_user.id, api_calls=1)
+            except Exception:
+                pass
             
             return WorkflowResponse(
                 request_id=request_id,
@@ -288,6 +304,10 @@ async def execute_workflow(
             if inferred_type == "full_summary":
                 metrics.reports_generated += 1
                 db.commit()
+                try:
+                    increment_usage_metrics(current_user.id, reports_generated=1)
+                except Exception:
+                    pass
 
             return WorkflowResponse(
                 request_id=request_id,
@@ -405,7 +425,12 @@ async def delete_workflow_result(
             )
         
         del workflow_results[request_id]
-        
+        try:
+            log_auth_event("workflow_delete", current_user.id, True)
+            increment_usage_metrics(current_user.id, api_calls=1)
+        except Exception:
+            pass
+
         return {"message": f"Workflow result {request_id} deleted successfully"}
         
     except HTTPException:
@@ -465,6 +490,16 @@ async def _execute_workflow_async(request_id: str, query: str, user_id: int):
         workflow_results[request_id] = result
         
         logger.info(f"Async workflow {request_id} completed in {execution_time}ms")
+        try:
+            # Log async completion and update usage metrics
+            wtype = result.get("workflow_type")
+            log_auth_event("workflow_async_completed", user_id, True)
+            if wtype == "full_summary":
+                increment_usage_metrics(user_id, api_calls=1, reports_generated=1)
+            else:
+                increment_usage_metrics(user_id, api_calls=1)
+        except Exception:
+            pass
         
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
