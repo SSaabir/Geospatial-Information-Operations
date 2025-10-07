@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
+from pydantic import BaseModel, Field
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -80,7 +81,8 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             full_name=user_data.full_name,
             hashed_password=hashed_password,
             is_active=user_data.is_active,
-            avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user_data.username}"
+            avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user_data.username}",
+            tier=user_data.tier or "free"
         )
         
         db.add(new_user)
@@ -159,7 +161,8 @@ async def login_user(
         tokens = create_tokens_for_user({
             "id": user.id,
             "username": user.username,
-            "email": user.email
+            "email": user.email,
+            "tier": getattr(user, "tier", "free")
         })
         
         # Prepare response
@@ -259,6 +262,53 @@ async def get_current_user_info(current_user: UserDB = Depends(get_current_user)
         UserResponse: Current user information
     """
     return UserResponse.from_orm(current_user)
+
+
+class TierChangeRequest(BaseModel):
+    """Request model to change current user's subscription tier"""
+    tier: str = Field(..., description="New tier: free, researcher, professional")
+
+
+@auth_router.post("/me/tier", response_model=UserResponse)
+async def change_user_tier(
+    request: TierChangeRequest,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Change the current user's subscription tier.
+
+    This is a placeholder for billing integration. In production, this should be
+    called only after successful payment confirmation via webhook.
+    """
+    try:
+        allowed_tiers = {"free", "researcher", "professional"}
+        new_tier = request.tier.strip().lower()
+        if new_tier not in allowed_tiers:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid tier. Must be one of: free, researcher, professional"
+            )
+
+        # No-op if tier is the same
+        if getattr(current_user, "tier", "free") == new_tier:
+            return UserResponse.from_orm(current_user)
+
+        current_user.tier = new_tier
+        current_user.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(current_user)
+
+        return UserResponse.from_orm(current_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Change tier error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to change tier"
+        )
 
 @auth_router.put("/me", response_model=UserResponse)
 async def update_current_user(

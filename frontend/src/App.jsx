@@ -17,6 +17,9 @@ import SecurityDashboard from './pages/SecurityDashboard'
 import AIEthicsDashboard from './pages/AIEthicsDashboard'
 import Phase3Demo from './pages/Phase3Demo'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import Pricing from './pages/Pricing'
+import Marketplace from './pages/Marketplace'
+import Analytics from './pages/Analytics'
 
 // Import layout components
 import Header from './components/Header'
@@ -52,6 +55,9 @@ function App() {
                     <Route path="/terms" element={<TermsAndConditions />} />
                     <Route path="/weather-predictor" element={<WeatherPredictor />} />
                     <Route path="/phase3-demo" element={<Phase3Demo />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/marketplace" element={<Marketplace />} />
+                    <Route path="/analytics" element={<Analytics />} />
                     
                     {/* Dashboard routes - Protected */}
                     <Route path="/dashboard" element={

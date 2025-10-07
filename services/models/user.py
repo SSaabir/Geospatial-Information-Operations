@@ -23,6 +23,7 @@ class UserDB(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
     avatar_url = Column(Text, nullable=True)
+    tier = Column(String(20), default="free")  # free, researcher, professional
     
 
 
@@ -33,11 +34,13 @@ class UserBase(BaseModel):
     email: EmailStr
     full_name: Optional[str] = Field(None, max_length=100)
     is_active: bool = True
+    tier: str = Field("free", description="User tier: free, researcher, professional")
 
 class UserCreate(UserBase):
     """User creation model"""
     password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
+    tier: str = Field("free", description="User tier: free, researcher, professional")
 
 class UserLogin(BaseModel):
     """User login model"""
@@ -51,6 +54,7 @@ class UserResponse(UserBase):
     created_at: datetime
     last_login: Optional[datetime]
     avatar_url: Optional[str]
+    tier: str
     
     class Config:
         from_attributes = True
