@@ -15,15 +15,17 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
 
 try:
-    from security_agent import SecurityAgent
-    from security_framework import get_security_framework, SecurityFramework
-except ImportError as e:
+    # Imported from services/agents/security_agent.py and security_framework.py
+    from security_agent import SecurityAgent  # type: ignore
+    from security_framework import get_security_framework, SecurityFramework  # type: ignore
+except Exception as e:
     logging.error(f"Failed to import security modules: {e}")
-    SecurityAgent = None
-    get_security_framework = None
-    SecurityFramework = None
+    SecurityAgent = None  # type: ignore
+    get_security_framework = None  # type: ignore
+    SecurityFramework = None  # type: ignore
 
 from security.auth_middleware import verify_token
+from middleware.event_logger import log_auth_event, increment_usage_metrics
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -111,6 +113,16 @@ async def get_security_dashboard(current_user: dict = Depends(verify_token)):
             }
         
         dashboard_data = security_framework.get_security_dashboard_data()
+        try:
+            # log dashboard access
+            uid = getattr(current_user, 'get', lambda k, d=None: None)('user_id', None) if isinstance(current_user, dict) else None
+            # verify_token returns a dict for current_user in this module; best-effort mapping
+            user_id = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("security_dashboard_view", user_id, True)
+            if user_id:
+                increment_usage_metrics(user_id, api_calls=1)
+        except Exception:
+            pass
         return dashboard_data
         
     except Exception as e:
@@ -283,6 +295,14 @@ async def validate_data(
             }
         
         validation_result = security_agent.validate_weather_data(data)
+        try:
+            # Log usage of validation
+            uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+            log_auth_event("data_validation", uid, True)
+            if uid:
+                increment_usage_metrics(uid, api_calls=1)
+        except Exception:
+            pass
         return validation_result
         
     except Exception as e:
@@ -375,6 +395,14 @@ async def update_incident_status(
                 
                 # Store updated incident in database if available
                 security_framework.store_security_incident(incident)
+                try:
+                    # Log incident update
+                    uid = current_user.get('user_id') if isinstance(current_user, dict) else None
+                    log_auth_event("incident_update", uid, True)
+                    if uid:
+                        increment_usage_metrics(uid, api_calls=1)
+                except Exception:
+                    pass
                 
                 return {
                     "message": "Incident updated successfully",

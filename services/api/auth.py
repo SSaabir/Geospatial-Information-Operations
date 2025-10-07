@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
-from typing import Dict, Any
+from typing import Dict, Any, Generator
 import logging
 
 from models.user import (
@@ -28,8 +28,11 @@ auth_router = APIRouter(prefix="/auth", tags=["Authentication"])
 # Database configuration
 db_config = DatabaseConfig()
 
-def get_db() -> Session:
-    """Get database session"""
+def get_db() -> Generator[Session, None, None]:
+    """Get database session (generator for FastAPI Depends)
+
+    Returns a generator yielding a SQLAlchemy Session.
+    """
     db = db_config.get_session()
     try:
         yield db
@@ -90,6 +93,12 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         db.refresh(new_user)
         
         logger.info(f"New user registered: {new_user.username}")
+        try:
+            # Log auth event (best-effort)
+            log_auth_event("register", new_user.id, True)
+            increment_usage_metrics(new_user.id, api_calls=1)
+        except Exception as e:
+            logger.exception("Non-fatal: failed to log auth event during register: %s", e)
         return UserResponse.from_orm(new_user)
         
     except IntegrityError as e:
@@ -172,6 +181,11 @@ async def login_user(
         }
         
         logger.info(f"User logged in: {user.username}")
+        try:
+            log_auth_event("login", user.id, True)
+            increment_usage_metrics(user.id, api_calls=1)
+        except Exception as e:
+            logger.exception("Non-fatal: failed to log auth event during login: %s", e)
         return response_data
         
     except HTTPException:
@@ -207,6 +221,10 @@ async def logout_user(
             jwt_handler.blacklist_token(token)
         
         logger.info(f"User logged out: {current_user.username}")
+        try:
+            log_auth_event("logout", current_user.id, True)
+        except Exception as e:
+            logger.exception("Non-fatal: failed to log auth event during logout: %s", e)
         return {"message": "Successfully logged out"}
         
     except Exception as e:

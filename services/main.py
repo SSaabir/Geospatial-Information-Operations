@@ -13,10 +13,10 @@ from api.auth import auth_router
 from api.orchestrator_api import orchestrator_router
 from api.security_api import security_router
 from api.analytics_api import analytics_router
-from api.marketplace_api import marketplace_router
 from api.ai_ethics_api import ai_ethics_router
 from api.billing_api import billing_router
 from db_config import DatabaseConfig
+from db_seed import create_tables_and_seed
 from security.auth_middleware import AuthenticationError, AuthorizationError
 
 # Load environment variables
@@ -41,8 +41,14 @@ async def lifespan(app: FastAPI):
     # Create database tables
     try:
         engine = db_config.get_engine()
+        # Create application tables defined by SQLAlchemy models
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables created successfully")
+        # Create audit/payment tables and seed sample data (idempotent)
+        try:
+            create_tables_and_seed()
+        except Exception as e:
+            logger.exception("db_seed failed: %s", e)
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
     
@@ -85,7 +91,6 @@ app.include_router(orchestrator_router)
 app.include_router(security_router)
 app.include_router(ai_ethics_router)
 app.include_router(analytics_router)
-app.include_router(marketplace_router)
 app.include_router(billing_router)
 
 
@@ -134,6 +139,53 @@ async def root():
         "docs": "/docs",
         "health": "/health"
     }
+
+
+# Simple request logging middleware (best-effort, non-blocking)
+@app.middleware("http")
+async def request_event_logger(request: Request, call_next):
+    start = time.time()
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+    except Exception as e:
+        # If underlying call throws, log and re-raise
+        status_code = 500
+        raise
+    finally:
+        duration = time.time() - start
+        try:
+            user_id = None
+            # Attempt to get user info from Authorization header (best-effort)
+            auth_header = request.headers.get("authorization")
+            if auth_header and auth_header.lower().startswith("bearer "):
+                token = auth_header.split(" ", 1)[1]
+                payload = None
+                try:
+                    payload = __import__('security.jwt_handler', fromlist=['jwt_handler']).jwt_handler.verify_token(token)
+                except Exception as e:
+                    logger.debug("jwt_handler.verify_token failed: %s", e)
+                    payload = None
+                if payload and 'user_id' in payload:
+                    try:
+                        user_id = int(payload.get('user_id'))
+                    except Exception as e:
+                        logger.debug("Failed to parse user_id from token payload: %s", e)
+                        user_id = None
+
+            log_api_access(
+                endpoint=str(request.url.path),
+                method=request.method,
+                user_id=user_id,
+                ip_address=request.client.host if request.client else None,
+                user_agent=request.headers.get('user-agent'),
+                response_code=status_code,
+                response_time=duration,
+            )
+        except Exception:
+            # Log failures in the logging/auditing path so we can detect them
+            logger.exception("Failed to write api access log (non-fatal)")
+    return response
 
 
 
