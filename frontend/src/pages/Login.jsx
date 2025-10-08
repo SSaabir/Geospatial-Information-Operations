@@ -1,22 +1,45 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Shield } from 'lucide-react';
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+// ✅ Validation Schema
+const loginSchema = yup.object().shape({
+  email: yup.string().trim().email("Invalid email format").required("Email is required"),
+  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+});
+
+const signupSchema = yup.object().shape({
+  name: yup.string().trim().required("Full name is required"),
+  email: yup.string().trim().email("Invalid email format").required("Email is required"),
+  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref("password"), null], "Passwords must match")
+    .required("Confirm Password is required"),
+});
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    name: ''
-  });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ✅ Setup React Hook Form with dynamic schema & real-time validation
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(isLogin ? loginSchema : signupSchema),
+    mode: "onChange", // ✅ real-time validation
+  });
+
+  const onSubmit = async (formData) => {
     setError('');
     setIsLoading(true);
 
@@ -34,7 +57,6 @@ export default function Login() {
         if (!res.ok) {
           setError(data.detail || 'Login failed');
         } else {
-          // Login successful
           navigate('/home');
         }
       } catch (err) {
@@ -43,18 +65,12 @@ export default function Login() {
       }
     } else {
       // SIGNUP
-      if (formData.password !== formData.confirmPassword) {
-        setError('Passwords do not match');
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const res = await fetch('http://localhost:8000/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            username: formData.email, // username can be email
+            username: formData.email,
             email: formData.email,
             password: formData.password,
             confirm_password: formData.confirmPassword,
@@ -68,9 +84,8 @@ export default function Login() {
         if (!res.ok) {
           setError(data.detail || 'Signup failed');
         } else {
-          // Signup successful → switch to login
           setIsLogin(true);
-          setFormData({ ...formData, password: '', confirmPassword: '' });
+          reset();
           setError('Signup successful! Please login.');
         }
       } catch (err) {
@@ -78,13 +93,6 @@ export default function Login() {
         setError(err.message);
       }
     }
-  };
-
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
   };
 
   return (
@@ -109,20 +117,20 @@ export default function Login() {
         <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100">
           <div className="flex bg-purple-50 rounded-2xl p-1 mb-6">
             <button
-              onClick={() => {setIsLogin(true); setError('');}}
+              onClick={() => {setIsLogin(true); setError(''); reset();}}
               className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${isLogin ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}
             >
               Login
             </button>
             <button
-              onClick={() => {setIsLogin(false); setError('');}}
+              onClick={() => {setIsLogin(false); setError(''); reset();}}
               className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${!isLogin ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}
             >
               Sign Up
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {!isLogin && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Full Name</label>
@@ -130,14 +138,12 @@ export default function Login() {
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
+                    {...register("name")}
                     className="w-full pl-10 pr-4 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
                     placeholder="Enter your full name"
-                    required={!isLogin}
                   />
                 </div>
+                {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
               </div>
             )}
 
@@ -147,33 +153,13 @@ export default function Login() {
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
+                  {...register("email")}
                   className="w-full pl-10 pr-4 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
                   placeholder="Enter your email"
-                  required
                 />
               </div>
+              {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
             </div>
-
-            {!isLogin && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Confirm Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleInputChange}
-                    className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
-                    placeholder="Confirm your password"
-                    required={!isLogin}
-                  />
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Password</label>
@@ -181,12 +167,9 @@ export default function Login() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
+                  {...register("password")}
                   className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
                   placeholder="Enter your password"
-                  required
                 />
                 <button
                   type="button"
@@ -196,7 +179,24 @@ export default function Login() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
             </div>
+
+            {!isLogin && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    {...register("confirmPassword")}
+                    className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
+                    placeholder="Confirm your password"
+                  />
+                </div>
+                {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>}
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3">

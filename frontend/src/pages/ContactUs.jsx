@@ -1,51 +1,42 @@
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+// ✅ Validation schema
+const schema = yup.object().shape({
+  firstName: yup.string().required("Please enter your first name"),
+  lastName: yup.string().required("Please enter your last name"),
+  email: yup
+    .string()
+    .email("Please enter a valid email address")
+    .required("Please enter your email address"),
+  subject: yup.string().required("Please select an inquiry type"),
+  message: yup.string().required("Please enter your message"),
+});
 
 const ContactUs = () => {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    organization: "",
-    subject: "",
-    message: "",
-  });
-
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const validateForm = () => {
-    let tempErrors = {};
-    if (!formData.firstName) tempErrors.firstName = "Please enter your first name";
-    if (!formData.lastName) tempErrors.lastName = "Please enter your last name";
-    if (!formData.email) {
-      tempErrors.email = "Please enter your email address";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      tempErrors.email = "Please enter a valid email address";
-    }
-    if (!formData.subject) tempErrors.subject = "Please select an inquiry type";
-    if (!formData.message) tempErrors.message = "Please enter your message";
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(schema),
+    mode: "onChange", // ✅ Real-time validation
+  });
 
-    setErrors(tempErrors);
-    return Object.keys(tempErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
+  const onSubmit = async (data) => {
     setLoading(true);
+    console.log("Form submitted data:", data);
+
     setTimeout(() => {
       setLoading(false);
       setSuccess(true);
-      setFormData({
-        firstName: "",
-        lastName: "",
-        email: "",
-        organization: "",
-        subject: "",
-        message: "",
-      });
+      reset();
       setTimeout(() => setSuccess(false), 6000);
     }, 2500);
   };
@@ -68,21 +59,24 @@ const ContactUs = () => {
               Get in Touch
             </h2>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Row 1 */}
               <div className="grid md:grid-cols-2 gap-5">
-                <div className={`form-group ${errors.firstName ? "text-red-500" : ""}`}>
+                <div>
                   <label className="block font-semibold text-[#A896F5] mb-2">
                     First Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    {...register("firstName")}
                     placeholder="Your first name"
                     className="w-full p-4 rounded-lg border-2 border-[#a896f533] bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f34d] focus:outline-none focus:ring-2 focus:ring-[#A896F5] focus:border-[#A896F5]"
                   />
-                  {errors.firstName && <p className="text-sm mt-1">{errors.firstName}</p>}
+                  {errors.firstName && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.firstName.message}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -91,12 +85,15 @@ const ContactUs = () => {
                   </label>
                   <input
                     type="text"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    {...register("lastName")}
                     placeholder="Your last name"
                     className="w-full p-4 rounded-lg border-2 border-[#a896f533] bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f34d] focus:outline-none focus:ring-2 focus:ring-[#A896F5] focus:border-[#A896F5]"
                   />
-                  {errors.lastName && <p className="text-sm text-red-500 mt-1">{errors.lastName}</p>}
+                  {errors.lastName && (
+                    <p className="text-sm text-red-500 mt-1">
+                      {errors.lastName.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -107,21 +104,25 @@ const ContactUs = () => {
                 </label>
                 <input
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  {...register("email")}
                   placeholder="your.email@university.edu"
                   className="w-full p-4 rounded-lg border-2 border-[#a896f533] bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f34d] focus:outline-none focus:ring-2 focus:ring-[#A896F5] focus:border-[#A896F5]"
                 />
-                {errors.email && <p className="text-sm text-red-500 mt-1">{errors.email}</p>}
+                {errors.email && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
 
               {/* Organization */}
               <div>
-                <label className="block font-semibold text-[#A896F5] mb-2">Organization/Institution</label>
+                <label className="block font-semibold text-[#A896F5] mb-2">
+                  Organization/Institution
+                </label>
                 <input
                   type="text"
-                  value={formData.organization}
-                  onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                  {...register("organization")}
                   placeholder="University, Research Center, etc."
                   className="w-full p-4 rounded-lg border-2 border-[#a896f533] bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f34d] focus:outline-none focus:ring-2 focus:ring-[#A896F5] focus:border-[#A896F5]"
                 />
@@ -133,8 +134,7 @@ const ContactUs = () => {
                   Inquiry Type <span className="text-red-500">*</span>
                 </label>
                 <select
-                  value={formData.subject}
-                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  {...register("subject")}
                   className="w-full p-4 rounded-lg border-2 border-[#a896f533] bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f34d] focus:outline-none focus:ring-2 focus:ring-[#A896F5] focus:border-[#A896F5]"
                 >
                   <option value="">Select inquiry type</option>
@@ -147,7 +147,11 @@ const ContactUs = () => {
                   <option value="feature-request">Feature Request</option>
                   <option value="general">General Question</option>
                 </select>
-                {errors.subject && <p className="text-sm text-red-500 mt-1">{errors.subject}</p>}
+                {errors.subject && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.subject.message}
+                  </p>
+                )}
               </div>
 
               {/* Message */}
@@ -156,12 +160,15 @@ const ContactUs = () => {
                   Message <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  {...register("message")}
                   placeholder="Please describe your inquiry..."
                   className="w-full min-h-[130px] p-4 rounded-lg border-2 border-[#a896f533] bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f34d] focus:outline-none focus:ring-2 focus:ring-[#A896F5] focus:border-[#A896F5]"
                 />
-                {errors.message && <p className="text-sm text-red-500 mt-1">{errors.message}</p>}
+                {errors.message && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {errors.message.message}
+                  </p>
+                )}
               </div>
 
               {/* Submit */}
@@ -191,13 +198,38 @@ const ContactUs = () => {
             </h2>
 
             {[
-              { icon: "🔬", title: "Data & Methodology", email: "data@climateprediction.app", desc: "Questions about sources, validation, and scientific methods" },
-              { icon: "🛠️", title: "Technical Support", email: "support@climateprediction.app", desc: "API issues, bugs, and technical assistance" },
-              { icon: "🔒", title: "Privacy & Data", email: "privacy@climateprediction.app", desc: "Data handling, deletion requests, privacy concerns" },
-              { icon: "🎓", title: "Research Partnerships", email: "research@climateprediction.app", desc: "Academic collaborations and institutional partnerships" },
+              {
+                icon: "🔬",
+                title: "Data & Methodology",
+                email: "data@climateprediction.app",
+                desc: "Questions about sources, validation, and scientific methods",
+              },
+              {
+                icon: "🛠️",
+                title: "Technical Support",
+                email: "support@climateprediction.app",
+                desc: "API issues, bugs, and technical assistance",
+              },
+              {
+                icon: "🔒",
+                title: "Privacy & Data",
+                email: "privacy@climateprediction.app",
+                desc: "Data handling, deletion requests, privacy concerns",
+              },
+              {
+                icon: "🎓",
+                title: "Research Partnerships",
+                email: "research@climateprediction.app",
+                desc: "Academic collaborations and institutional partnerships",
+              },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-5 mb-7 p-5 bg-white/20 rounded-2xl backdrop-blur-sm hover:bg-white/30 transition">
-                <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-white/20 text-xl">{item.icon}</div>
+              <div
+                key={i}
+                className="flex items-center gap-5 mb-7 p-5 bg-white/20 rounded-2xl backdrop-blur-sm hover:bg-white/30 transition"
+              >
+                <div className="w-14 h-14 flex items-center justify-center rounded-xl bg-white/20 text-xl">
+                  {item.icon}
+                </div>
                 <div>
                   <h4 className="text-lg font-semibold">{item.title}</h4>
                   <p className="opacity-90 text-sm">
@@ -218,20 +250,48 @@ const ContactUs = () => {
           </h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: "🌡️", title: "Temperature Analysis", desc: "Historical trends, anomaly detection, and future projections." },
-              { icon: "🌧️", title: "Precipitation Patterns", desc: "Rainfall prediction, drought analysis, and forecasting." },
-              { icon: "🌊", title: "Sea Level & Ocean Data", desc: "Coastal impacts, rise predictions, and ocean analysis." },
-              { icon: "🌪️", title: "Extreme Weather", desc: "Hurricane tracking, severe storm prediction, risk assessment." },
-              { icon: "📊", title: "Custom Climate Models", desc: "Tailored predictions for specific regions and research." },
-              { icon: "🔬", title: "Research Support", desc: "Partnerships, validation, and methodology consultation." },
+              {
+                icon: "🌡️",
+                title: "Temperature Analysis",
+                desc: "Historical trends, anomaly detection, and future projections.",
+              },
+              {
+                icon: "🌧️",
+                title: "Precipitation Patterns",
+                desc: "Rainfall prediction, drought analysis, and forecasting.",
+              },
+              {
+                icon: "🌊",
+                title: "Sea Level & Ocean Data",
+                desc: "Coastal impacts, rise predictions, and ocean analysis.",
+              },
+              {
+                icon: "🌪️",
+                title: "Extreme Weather",
+                desc: "Hurricane tracking, severe storm prediction, risk assessment.",
+              },
+              {
+                icon: "📊",
+                title: "Custom Climate Models",
+                desc: "Tailored predictions for specific regions and research.",
+              },
+              {
+                icon: "🔬",
+                title: "Research Support",
+                desc: "Partnerships, validation, and methodology consultation.",
+              },
             ].map((item, i) => (
               <div
                 key={i}
                 className="relative p-6 rounded-xl bg-gradient-to-br from-[#F6F0FF] to-[#e3d9f380] border-l-4 border-[#C8BBF6] hover:-translate-y-1 hover:shadow-lg transition"
               >
-                <strong className="block text-[#A896F5] mb-2">{item.title}</strong>
+                <strong className="block text-[#A896F5] mb-2">
+                  {item.title}
+                </strong>
                 <span className="text-sm">{item.desc}</span>
-                <span className="absolute top-4 right-4 text-xl opacity-70">{item.icon}</span>
+                <span className="absolute top-4 right-4 text-xl opacity-70">
+                  {item.icon}
+                </span>
               </div>
             ))}
           </div>
