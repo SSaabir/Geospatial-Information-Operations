@@ -62,10 +62,12 @@ class UserResponse(UserBase):
         from_attributes = True
 
 class UserUpdate(BaseModel):
-    """User update model"""
+    """User update model (Edit Profile)"""
     full_name: Optional[str] = Field(None, max_length=100)
     email: Optional[EmailStr] = None  # ✅ Validate updated email
     avatar_url: Optional[str] = None
+    # Added tier here so frontend can send a new tier if needed
+    tier: Optional[str] = Field(None, description="User tier: free, researcher, professional")
 
 class ChangePassword(BaseModel):
     """Change password model"""
