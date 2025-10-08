@@ -18,6 +18,8 @@ from security.jwt_handler import (
 )
 from security.auth_middleware import get_current_user, get_optional_user, security
 from db_config import DatabaseConfig
+from middleware.event_logger import log_auth_event, increment_usage_metrics
+from services.utils.notification_manager import notify
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -99,11 +101,31 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             increment_usage_metrics(new_user.id, api_calls=1)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during register: %s", e)
+        # Send welcome/registration notification (non-blocking best-effort)
+        try:
+            notify(
+                subject="New user registered",
+                message=f"User {new_user.username} (id={new_user.id}) registered.",
+                level="info",
+                metadata={"user_id": new_user.id, "username": new_user.username}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send registration notification")
         return UserResponse.from_orm(new_user)
         
     except IntegrityError as e:
         db.rollback()
         logger.error(f"Database integrity error during registration: {e}")
+        # Notify admin about failed registration due to integrity conflict
+        try:
+            notify(
+                subject="Registration failed - data conflict",
+                message=f"A registration attempt failed due to data conflict: {str(e)}",
+                level="critical",
+                metadata={"error": str(e)}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send registration failure notification")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="User registration failed due to data conflict"
@@ -144,6 +166,17 @@ async def login_user(
         ).first()
         
         if not user:
+            # Notify about failed login attempt (unknown user) and return
+            try:
+                background_tasks.add_task(
+                    notify,
+                    subject="Failed login attempt - unknown user",
+                    message=f"Login attempt for unknown user identifier: {user_credentials.username}",
+                    level="warning",
+                    metadata={"username": user_credentials.username}
+                )
+            except Exception:
+                logger.exception("Non-fatal: failed to enqueue failed-login notification")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -157,6 +190,17 @@ async def login_user(
         
         # Verify password
         if not verify_password(user_credentials.password, user.hashed_password):
+            # Notify about failed login attempt (invalid password)
+            try:
+                background_tasks.add_task(
+                    notify,
+                    subject="Failed login attempt - invalid password",
+                    message=f"Invalid password for user {user.username} (id={user.id}) from request identifier: {user_credentials.username}",
+                    level="warning",
+                    metadata={"user_id": user.id, "username": user.username}
+                )
+            except Exception:
+                logger.exception("Non-fatal: failed to enqueue failed-login notification")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials"
@@ -186,6 +230,18 @@ async def login_user(
             increment_usage_metrics(user.id, api_calls=1)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during login: %s", e)
+        # Non-blocking notification for successful login (optional, keep light)
+        try:
+            background_tasks.add_task(
+                notify,
+                subject="User logged in",
+                message=f"User {user.username} (id={user.id}) logged in.",
+                level="info",
+                metadata={"user_id": user.id, "username": user.username}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to enqueue login notification")
+
         return response_data
         
     except HTTPException:
@@ -225,6 +281,16 @@ async def logout_user(
             log_auth_event("logout", current_user.id, True)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during logout: %s", e)
+        # Best-effort notification about logout
+        try:
+            notify(
+                subject="User logged out",
+                message=f"User {current_user.username} (id={current_user.id}) logged out.",
+                level="info",
+                metadata={"user_id": current_user.id, "username": current_user.username}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send logout notification")
         return {"message": "Successfully logged out"}
         
     except Exception as e:
@@ -256,7 +322,16 @@ async def refresh_token(refresh_data: RefreshToken):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token"
             )
-        
+        # Non-PII token refresh notification (does not include token)
+        try:
+            notify(
+                subject="Access token refreshed",
+                message="A user refreshed their access token successfully.",
+                level="info",
+                metadata={}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send token refresh notification")
         return new_tokens
         
     except HTTPException:
@@ -312,11 +387,22 @@ async def change_user_tier(
         if getattr(current_user, "tier", "free") == new_tier:
             return UserResponse.from_orm(current_user)
 
+        old_tier = getattr(current_user, "tier", "free")
         current_user.tier = new_tier
         current_user.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(current_user)
 
+        # Notify about tier change
+        try:
+            notify(
+                subject="Subscription tier changed",
+                message=f"User {current_user.username} (id={current_user.id}) changed tier from {old_tier} to {new_tier}.",
+                level="info",
+                metadata={"user_id": current_user.id, "from": old_tier, "to": new_tier}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send tier-change notification")
         return UserResponse.from_orm(current_user)
     except HTTPException:
         raise
@@ -374,6 +460,15 @@ async def update_current_user(
         db.refresh(current_user)
         
         logger.info(f"User updated: {current_user.username}")
+        try:
+            notify(
+                subject="User profile updated",
+                message=f"User {current_user.username} (id={current_user.id}) updated their profile.",
+                level="info",
+                metadata={"user_id": current_user.id}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send profile update notification")
         return UserResponse.from_orm(current_user)
         
     except HTTPException:
@@ -425,6 +520,15 @@ async def change_password(
         db.commit()
         
         logger.info(f"Password changed for user: {current_user.username}")
+        try:
+            notify(
+                subject="Password changed",
+                message=f"Password changed for user {current_user.username} (id={current_user.id}).",
+                level="warning",
+                metadata={"user_id": current_user.id}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send password change notification")
         return {"message": "Password changed successfully"}
         
     except HTTPException:

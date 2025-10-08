@@ -123,8 +123,13 @@ class SecurityFramework:
             # Initialize threat detection models
             self.threat_detector = ThreatDetectionEngine()
             
-            # Setup notification system
-            self.notification_system = SecurityNotificationSystem()
+            # Setup notification system using central NotificationManager
+            try:
+                from services.utils.notification_manager import get_notification_manager
+                self.notification_system = get_notification_manager(engine=getattr(self, 'engine', None))
+            except Exception:
+                # Fallback to local SecurityNotificationSystem if import fails
+                self.notification_system = SecurityNotificationSystem()
             
             logger.info("🔒 Security framework initialized successfully")
         except Exception as e:
@@ -454,9 +459,28 @@ class SecurityFramework:
         self.incidents.append(incident)
         self.store_security_incident(incident)
         
-        # Send alerts for high/critical threats
+        # Send alerts for high/critical threats via central manager
         if threat_level in [ThreatLevel.HIGH, ThreatLevel.CRITICAL]:
-            self.notification_system.send_security_alert(incident)
+            try:
+                # notification manager exposes notify(subject, message, level, metadata)
+                self.notification_system.notify(
+                    subject=f"Security Alert: {incident.title} ({incident.threat_level.value.upper()})",
+                    message=f"{incident.description}\n\nIncident ID: {incident.id}\nCategory: {incident.category.value}",
+                    level=incident.threat_level.value,
+                    metadata={
+                        'incident_id': incident.id,
+                        'category': incident.category.value,
+                        'source_ip': incident.source_ip,
+                        'user_id': incident.user_id,
+                        'response_actions': incident.response_actions
+                    }
+                )
+            except Exception:
+                # If central manager doesn't support notify, try legacy send
+                try:
+                    self.notification_system.send_security_alert(incident)
+                except Exception as e:
+                    logger.error(f"Failed to send security alert: {e}")
         
         logger.warning(f"🚨 Security incident created: {title} ({threat_level.value})")
         return incident
