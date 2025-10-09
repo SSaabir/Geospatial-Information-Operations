@@ -106,13 +106,16 @@ class TrendAgent:
         print(f"Filtered data shape: {filtered_df.shape}")
         return filtered_df
     
-    def analyze_trends(self, start_date=None, end_date=None):
+    def analyze_trends(self, start_date=None, end_date=None, features=None):
         """
         Analyze climate trends for the specified date range
         
         Args:
             start_date (str): Start date in format 'YYYY-MM-DD'
             end_date (str): End date in format 'YYYY-MM-DD'
+            features (list, str, or None): Specific feature(s) to analyze. 
+                                          If None, analyzes all numeric columns.
+                                          Can be a single string or list of strings.
             
         Returns:
             dict: Analysis results
@@ -133,8 +136,35 @@ class TrendAgent:
             "data_points": len(filtered_df)
         }
         
-        # Analyze each numeric column
-        numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns
+        # Handle feature selection
+        if features is not None:
+            # Convert single string to list
+            if isinstance(features, str):
+                features = [features]
+            
+            # Validate features exist in dataframe
+            valid_features = [f for f in features if f in filtered_df.columns]
+            if not valid_features:
+                available_cols = list(filtered_df.columns)
+                return {
+                    "error": f"None of the requested features exist in the dataset.",
+                    "requested_features": features,
+                    "available_columns": available_cols
+                }
+            
+            # Filter to only numeric columns from the requested features
+            numeric_cols = [f for f in valid_features 
+                           if filtered_df[f].dtype in [np.float64, np.int64, np.float32, np.int32]]
+            
+            if not numeric_cols:
+                return {
+                    "error": f"Requested features are not numeric columns.",
+                    "requested_features": features,
+                    "valid_features": valid_features
+                }
+        else:
+            # Default behavior: analyze all numeric columns
+            numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns
         
         for col in numeric_cols:
             # Skip columns with too many NaN values
@@ -218,7 +248,7 @@ class TrendAgent:
             return {"slope": 0, "intercept": 0, "r_value": 0, "p_value": 1, 
                     "error": f"Error calculating trend: {str(e)}"}
     
-    def generate_visualizations(self, start_date=None, end_date=None, output_dir="visualizations"):
+    def generate_visualizations(self, start_date=None, end_date=None, output_dir="visualizations", features=None):
         """
         Generate climate trend visualizations
         
@@ -226,6 +256,8 @@ class TrendAgent:
             start_date (str): Start date in format 'YYYY-MM-DD'
             end_date (str): End date in format 'YYYY-MM-DD'
             output_dir (str): Directory to save visualizations
+            features (list, str, or None): Specific feature(s) to visualize. 
+                                          If None, visualizes all numeric columns.
             
         Returns:
             dict: Paths to generated visualizations
@@ -241,8 +273,31 @@ class TrendAgent:
         # Create visualization directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
         
-        # Generate time series plots for each numeric column
-        numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns
+        # Handle feature selection (same logic as analyze_trends)
+        if features is not None:
+            if isinstance(features, str):
+                features = [features]
+            
+            valid_features = [f for f in features if f in filtered_df.columns]
+            if not valid_features:
+                return {
+                    "error": f"None of the requested features exist in the dataset.",
+                    "requested_features": features,
+                    "available_columns": list(filtered_df.columns)
+                }
+            
+            numeric_cols = [f for f in valid_features 
+                           if filtered_df[f].dtype in [np.float64, np.int64, np.float32, np.int32]]
+            
+            if not numeric_cols:
+                return {
+                    "error": f"Requested features are not numeric columns.",
+                    "requested_features": features
+                }
+        else:
+            # Default: all numeric columns
+            numeric_cols = filtered_df.select_dtypes(include=[np.number]).columns
+        
         plot_paths = {}
         
         for col in numeric_cols:
@@ -409,21 +464,27 @@ class TrendState(TypedDict):
 @tool("analyze_climate_trends", return_direct=True)
 def analyze_climate_trends_tool(tool_input: str) -> str:
     """
-    Analyze climate trends for a specified date range.
-    tool_input format: "start_date=YYYY-MM-DD;end_date=YYYY-MM-DD" or just "analyze" for full dataset
+    Analyze climate trends for a specified date range and optional features.
+    tool_input format: "start_date=YYYY-MM-DD;end_date=YYYY-MM-DD;features=temp,humidity" 
+    or "features=temperature" or just "analyze" for full dataset
     """
     try:
         agent = get_trend_agent()
         
         # Parse input parameters
-        start_date, end_date = None, None
+        start_date, end_date, features = None, None, None
         if "=" in tool_input:
             params = dict(item.split("=") for item in tool_input.split(";") if "=" in item)
             start_date = params.get("start_date")
             end_date = params.get("end_date")
+            features_str = params.get("features")
+            
+            # Parse features (can be comma-separated list)
+            if features_str:
+                features = [f.strip() for f in features_str.split(",")]
         
-        # Perform analysis
-        results = agent.analyze_trends(start_date, end_date)
+        # Perform analysis with optional features parameter
+        results = agent.analyze_trends(start_date, end_date, features)
         return json.dumps(results, default=str)
         
     except Exception as e:
@@ -434,21 +495,27 @@ def analyze_climate_trends_tool(tool_input: str) -> str:
 def generate_trend_visualizations_tool(tool_input: str) -> str:
     """
     Generate climate trend visualizations.
-    tool_input format: "start_date=YYYY-MM-DD;end_date=YYYY-MM-DD;output_dir=path" or "generate" for defaults
+    tool_input format: "start_date=YYYY-MM-DD;end_date=YYYY-MM-DD;output_dir=path;features=temp,humidity" 
+    or "generate" for defaults
     """
     try:
         agent = get_trend_agent()
         
         # Parse input parameters
-        start_date, end_date, output_dir = None, None, "visualizations"
+        start_date, end_date, output_dir, features = None, None, "visualizations", None
         if "=" in tool_input:
             params = dict(item.split("=") for item in tool_input.split(";") if "=" in item)
             start_date = params.get("start_date")
             end_date = params.get("end_date")
             output_dir = params.get("output_dir", "visualizations")
+            features_str = params.get("features")
+            
+            # Parse features (can be comma-separated list)
+            if features_str:
+                features = [f.strip() for f in features_str.split(",")]
         
-        # Generate visualizations
-        plot_paths = agent.generate_visualizations(start_date, end_date, output_dir)
+        # Generate visualizations with optional features parameter
+        plot_paths = agent.generate_visualizations(start_date, end_date, output_dir, features)
         return json.dumps(plot_paths, default=str)
         
     except Exception as e:
@@ -527,10 +594,26 @@ def analysis_node(state: TrendState) -> TrendState:
     try:
         # Build tool input from state
         tool_input = ""
+        parts = []
+        
         if state.get("start_date") and state.get("end_date"):
-            tool_input = f"start_date={state['start_date']};end_date={state['end_date']}"
-        else:
-            tool_input = "analyze"
+            parts.append(f"start_date={state['start_date']}")
+            parts.append(f"end_date={state['end_date']}")
+        
+        # Add features if specified in input query
+        if state.get("input"):
+            # Try to extract feature from input
+            from trend import normalize_feature_name
+            agent = get_trend_agent()
+            words = state["input"].lower().split()
+            for word in words:
+                if word not in ['analyze', 'trend', 'trends', 'analysis', 'for', 'of', 'the', 'last', 'day', 'days']:
+                    normalized = normalize_feature_name(word, agent.df.columns if agent.df is not None else [])
+                    if normalized:
+                        parts.append(f"features={normalized}")
+                        break
+        
+        tool_input = ";".join(parts) if parts else "analyze"
         
         result = analyze_climate_trends_tool.invoke(tool_input)
         state["analysis_results"] = json.loads(result)
@@ -545,11 +628,27 @@ def visualization_node(state: TrendState) -> TrendState:
     """Node to generate visualizations"""
     try:
         # Build tool input from state
-        tool_input = ""
+        parts = []
+        
         if state.get("start_date") and state.get("end_date"):
-            tool_input = f"start_date={state['start_date']};end_date={state['end_date']};output_dir=visualizations"
-        else:
-            tool_input = "generate"
+            parts.append(f"start_date={state['start_date']}")
+            parts.append(f"end_date={state['end_date']}")
+            parts.append("output_dir=visualizations")
+        
+        # Add features if specified in input query
+        if state.get("input"):
+            # Try to extract feature from input
+            from trend import normalize_feature_name
+            agent = get_trend_agent()
+            words = state["input"].lower().split()
+            for word in words:
+                if word not in ['analyze', 'trend', 'trends', 'analysis', 'for', 'of', 'the', 'last', 'day', 'days']:
+                    normalized = normalize_feature_name(word, agent.df.columns if agent.df is not None else [])
+                    if normalized:
+                        parts.append(f"features={normalized}")
+                        break
+        
+        tool_input = ";".join(parts) if parts else "generate"
         
         result = generate_trend_visualizations_tool.invoke(tool_input)
         state["visualizations"] = json.loads(result)
