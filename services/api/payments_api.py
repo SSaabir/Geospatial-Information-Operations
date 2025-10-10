@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, DateTime, Boolean, Numeric, ForeignKey, func
@@ -14,6 +14,7 @@ from db_config import DatabaseConfig
 from models.user import Base, UserDB
 from security.auth_middleware import get_current_user
 from middleware.event_logger import log_auth_event, increment_usage_metrics
+from services.utils.notification_manager import notify
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,17 @@ async def create_payment(
     except Exception as e:
         logger.exception("Non-fatal: failed to log payment recorded: %s", e)
 
+    # Notify about recorded payment (non-blocking)
+    try:
+        notify(
+            subject="Payment recorded",
+            message=f"Payment recorded for user {user.username} (id={user.id}) for plan {plan}, amount ${float(payment.amount):.2f}.",
+            level="info",
+            metadata={"user_id": user.id, "payment_id": payment.id, "amount": float(payment.amount), "plan": plan}
+        )
+    except Exception:
+        logger.exception("Non-fatal: failed to send payment notification")
+
     return PaymentResponse(
         id=payment.id,
         user_id=payment.user_id,
@@ -180,6 +192,16 @@ async def create_session(
         increment_usage_metrics(current_user.id, api_calls=1)
     except Exception as e:
         logger.exception("Non-fatal: failed to log checkout session creation: %s", e)
+    # Notify user about checkout session creation
+    try:
+        notify(
+            subject="Checkout session created",
+            message=f"Checkout session {session_id} created for user {current_user.username} (id={current_user.id}) for plan {plan}, amount ${amount:.2f}.",
+            level="info",
+            metadata={"user_id": current_user.id, "session_id": session_id, "amount": amount, "plan": plan}
+        )
+    except Exception:
+        logger.exception("Non-fatal: failed to send checkout-session notification")
     return SessionResponse(session_id=session_id, checkout_url=checkout_url)
 
 
@@ -252,6 +274,17 @@ async def pay_session(session_id: str, payload: PayRequest, current_user: UserDB
     except Exception as e:
         logger.exception("Non-fatal: failed to log payment made: %s", e)
 
+    # Notify about successful payment (non-blocking)
+    try:
+        notify(
+            subject="Payment successful",
+            message=f"User {user.username} (id={user.id}) completed payment for plan {session.plan}, amount ${float(payment.amount):.2f}.",
+            level="info",
+            metadata={"user_id": user.id, "payment_id": payment.id, "amount": float(payment.amount), "plan": session.plan}
+        )
+    except Exception:
+        logger.exception("Non-fatal: failed to send payment-success notification")
+
     return {"success": True, "payment_id": payment.id, "user": {
         "username": user.username,
         "tier": user.tier,
@@ -319,6 +352,15 @@ def expire_once(db: Session):
             u.tier = "free"
             db.commit()
             logger.info("Downgraded user %s due to expired payment", u.username)
+            try:
+                notify(
+                    subject="Subscription downgraded",
+                    message=f"Your subscription has been downgraded to 'free' because your payment expired. User: {u.username} (id={u.id})",
+                    level="info",
+                    metadata={"user_id": u.id}
+                )
+            except Exception:
+                logger.exception("Non-fatal: failed to send subscription-downgrade notification")
 
 
 def start_payment_expiry_worker(db_conf: DatabaseConfig, interval_seconds: Optional[int] = None):
