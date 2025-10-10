@@ -1,48 +1,102 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Shield } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+
+// ✅ Validation Schema
+const loginSchema = yup.object().shape({
+  email: yup.string().trim().email("Invalid email format").required("Email is required"),
+  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+});
+
+const signupSchema = yup.object().shape({
+  name: yup.string().trim().required("Full name is required"),
+  email: yup.string().trim().email("Invalid email format").required("Email is required"),
+  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+  confirmPassword: yup
+    .string()
+    .oneOf([yup.ref("password"), null], "Passwords must match")
+    .required("Confirm Password is required"),
+});
 
 export default function Login() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    name: ''
-  });
   const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // ✅ Setup React Hook Form with dynamic schema & real-time validation
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(isLogin ? loginSchema : signupSchema),
+    mode: "onChange", // ✅ real-time validation
+  });
+
+  const onSubmit = async (formData) => {
     setError('');
+    setIsLoading(true);
 
     if (isLogin) {
-      const result = await login(formData.email, formData.password);
-      if (result.success) {
-        navigate('/home');
-      } else {
-        setError(result.error);
+      // LOGIN
+      try {
+        const res = await fetch('http://localhost:8000/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: formData.email, password: formData.password })
+        });
+        const data = await res.json();
+        setIsLoading(false);
+
+        if (!res.ok) {
+          setError(data.detail || 'Login failed');
+        } else {
+          navigate('/home');
+        }
+      } catch (err) {
+        setIsLoading(false);
+        setError(err.message);
       }
     } else {
-      // Handle signup (for demo, just switch to login)
-      setIsLogin(true);
-      setError('');
-    }
-  };
+      // SIGNUP
+      try {
+        const res = await fetch('http://localhost:8000/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: formData.email,
+            email: formData.email,
+            password: formData.password,
+            confirm_password: formData.confirmPassword,
+            full_name: formData.name,
+            is_active: true
+          })
+        });
+        const data = await res.json();
+        setIsLoading(false);
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+        if (!res.ok) {
+          setError(data.detail || 'Signup failed');
+        } else {
+          setIsLogin(true);
+          reset();
+          setError('Signup successful! Please login.');
+        }
+      } catch (err) {
+        setIsLoading(false);
+        setError(err.message);
+      }
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center p-4" style={{backgroundColor: '#F5EFFF'}}>
-      {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
@@ -50,7 +104,6 @@ export default function Login() {
       </div>
 
       <div className="relative w-full max-w-md">
-        {/* Header with logo/brand */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
             <Sparkles className="w-8 h-8 text-white" />
@@ -61,34 +114,23 @@ export default function Login() {
           <p className="text-gray-600 mt-2">Welcome back to your weather dashboard</p>
         </div>
 
-        {/* Main login card */}
         <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100">
-          {/* Toggle between Login/Signup */}
           <div className="flex bg-purple-50 rounded-2xl p-1 mb-6">
             <button
-              onClick={() => {setIsLogin(true); setError('');}}
-              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${
-                isLogin 
-                  ? 'bg-white text-purple-600 shadow-sm' 
-                  : 'text-gray-500 hover:text-purple-600'
-              }`}
+              onClick={() => {setIsLogin(true); setError(''); reset();}}
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${isLogin ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}
             >
               Login
             </button>
             <button
-              onClick={() => {setIsLogin(false); setError('');}}
-              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${
-                !isLogin 
-                  ? 'bg-white text-purple-600 shadow-sm' 
-                  : 'text-gray-500 hover:text-purple-600'
-              }`}
+              onClick={() => {setIsLogin(false); setError(''); reset();}}
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${!isLogin ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}
             >
               Sign Up
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name field for signup */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {!isLogin && (
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">Full Name</label>
@@ -96,47 +138,38 @@ export default function Login() {
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
                     type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
+                    {...register("name")}
                     className="w-full pl-10 pr-4 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
                     placeholder="Enter your full name"
-                    required={!isLogin}
                   />
                 </div>
+                {errors.name && <p className="text-red-500 text-sm">{errors.name.message}</p>}
               </div>
             )}
 
-            {/* Email field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
+                  {...register("email")}
                   className="w-full pl-10 pr-4 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
                   placeholder="Enter your email"
-                  required
                 />
               </div>
+              {errors.email && <p className="text-red-500 text-sm">{errors.email.message}</p>}
             </div>
 
-            {/* Password field */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
+                  {...register("password")}
                   className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
                   placeholder="Enter your password"
-                  required
                 />
                 <button
                   type="button"
@@ -146,16 +179,31 @@ export default function Login() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {errors.password && <p className="text-red-500 text-sm">{errors.password.message}</p>}
             </div>
 
-            {/* Error message */}
+            {!isLogin && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Confirm Password</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    {...register("confirmPassword")}
+                    className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
+                    placeholder="Confirm your password"
+                  />
+                </div>
+                {errors.confirmPassword && <p className="text-red-500 text-sm">{errors.confirmPassword.message}</p>}
+              </div>
+            )}
+
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-3">
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Demo credentials helper */}
             <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
               <div className="flex items-center space-x-2 mb-2">
                 <Shield className="w-4 h-4 text-purple-600" />
@@ -164,7 +212,6 @@ export default function Login() {
               <p className="text-purple-600 text-xs">Use any email/password combination to login</p>
             </div>
 
-            {/* Submit button */}
             <button
               type="submit"
               disabled={isLoading}
@@ -183,7 +230,6 @@ export default function Login() {
             </button>
           </form>
 
-          {/* Footer links */}
           <div className="mt-6 text-center space-y-2">
             {isLogin && (
               <Link to="/forgot-password" className="text-sm text-purple-600 hover:text-purple-800 transition-colors">

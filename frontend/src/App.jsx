@@ -19,6 +19,8 @@ import Phase3Demo from './pages/Phase3Demo'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import Pricing from './pages/Pricing'
 import Analytics from './pages/Analytics'
+import Marketplace from './pages/Marketplace'   // ✅ (was missing in your pasted code)
+import Settings from './pages/Settings'         // ✅ Added for Settings Page
 
 // Import layout components
 import Header from './components/Header'
@@ -84,6 +86,13 @@ function App() {
                     <Route path="/chat" element={
                       <ProtectedRoute>
                         <Chat />
+                      </ProtectedRoute>
+                    } />
+
+                    {/* ✅ Settings Page route - Protected */}
+                    <Route path="/settings" element={
+                      <ProtectedRoute>
+                        <Settings />
                       </ProtectedRoute>
                     } />
                     

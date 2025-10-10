@@ -1,48 +1,79 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import FeatureGate from '../components/FeatureGate';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+
+// Yup validation schema
+const schema = yup.object().shape({
+  datetime: yup
+    .string()
+    .required('Date is required')
+    .matches(/^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/, 'Date must be in MM/DD/YYYY format'),
+  sunrise: yup
+    .string()
+    .required('Sunrise time is required')
+    .matches(/^([0]?[1-9]|1[0-2]):([0-5][0-9]):([0-5][0-9]) (AM|PM)$/, 'Sunrise must be in hh:mm:ss AM/PM format'),
+  sunset: yup
+    .string()
+    .required('Sunset time is required')
+    .matches(/^([0]?[1-9]|1[0-2]):([0-5][0-9]):([0-5][0-9]) (AM|PM)$/, 'Sunset must be in hh:mm:ss AM/PM format'),
+  humidity: yup
+    .number()
+    .typeError('Humidity must be a number')
+    .required('Humidity is required')
+    .min(0, 'Humidity cannot be less than 0')
+    .max(100, 'Humidity cannot be more than 100'),
+  sealevelpressure: yup
+    .number()
+    .typeError('Sea Level Pressure must be a number')
+    .required('Sea Level Pressure is required')
+    .min(900, 'Pressure too low')
+    .max(1100, 'Pressure too high'),
+  temp: yup
+    .number()
+    .typeError('Temperature must be a number')
+    .required('Temperature is required')
+    .min(-50, 'Temperature too low')
+    .max(60, 'Temperature too high')
+});
 
 const WeatherPredictor = () => {
-  const [formData, setFormData] = useState({
-    datetime: '',
-    sunrise: '',
-    sunset: '',
-    humidity: '',
-    sealevelpressure: '',
-    temp: ''
-  });
-  
+  const { tier } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeView, setActiveView] = useState('form');
   const [prediction, setPrediction] = useState(null);
   const [datasetInfo, setDatasetInfo] = useState(null);
   const [similarConditions, setSimilarConditions] = useState(null);
   const [error, setError] = useState('');
-  const { tier } = useAuth();
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  // react-hook-form
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      datetime: '',
+      sunrise: '',
+      sunset: '',
+      humidity: '',
+      sealevelpressure: '',
+      temp: ''
+    }
+  });
 
   const fillExample = () => {
-    setFormData({
+    const exampleData = {
       datetime: '3/15/2020',
       sunrise: '6:30:15 AM',
       sunset: '6:45:20 PM',
       humidity: '68',
       sealevelpressure: '1015.2',
       temp: '18.5'
-    });
+    };
+    reset(exampleData);
   };
 
-  const handlePredict = async () => {
-    if (!formData.datetime || !formData.sunrise || !formData.sunset || !formData.humidity || !formData.sealevelpressure || !formData.temp) {
-      setError('Please fill in all required fields');
-      return;
-    }
+  const handlePredict = async (formData) => {
     setLoading(true);
     setError('');
     try {
@@ -79,7 +110,6 @@ const WeatherPredictor = () => {
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       const mockInfo = {
         total_records: 1987,
         date_range: { start: '1997-01-01', end: '2024-12-31' },
@@ -98,7 +128,6 @@ const WeatherPredictor = () => {
           pressure: { min: 985.3, max: 1045.7, mean: 1013.8 }
         }
       };
-      
       setDatasetInfo(mockInfo);
       setActiveView('dataset');
     } catch (err) {
@@ -108,7 +137,7 @@ const WeatherPredictor = () => {
     }
   };
 
-  const findSimilar = async () => {
+  const findSimilar = async (formData) => {
     if (!formData.temp || !formData.humidity || !formData.sealevelpressure) {
       setError('Please fill in temperature, humidity, and pressure to find similar conditions');
       return;
@@ -119,7 +148,6 @@ const WeatherPredictor = () => {
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1800));
-      
       const mockSimilar = {
         found_similar: 23,
         most_common_conditions: {
@@ -133,7 +161,6 @@ const WeatherPredictor = () => {
           { datetime: '2021-05-08', conditions: 'Partly Cloudy', temp: 18.1, humidity: 67.8, sealevelpressure: 1015.4 }
         ]
       };
-      
       setSimilarConditions(mockSimilar);
       setActiveView('similar');
     } catch (err) {
@@ -473,4 +500,4 @@ const WeatherPredictor = () => {
   );
 };
 
-export default WeatherPredictor;
+export default WeatherPredictor;  
