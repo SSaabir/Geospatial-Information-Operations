@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -28,6 +29,19 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY", "")
 
 class CheckoutRequest(BaseModel):
     plan_id: str
+
+
+class ChangeTierRequest(BaseModel):
+    tier: str
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    tier: str
+    
+    class Config:
+        orm_mode = True
 
 
 logger = logging.getLogger(__name__)

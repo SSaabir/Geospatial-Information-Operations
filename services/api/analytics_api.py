@@ -10,7 +10,7 @@ from security.auth_middleware import get_current_user
 from models.user import UserDB
 from models.usage import UsageMetrics
 from db_config import DatabaseConfig
-from services.utils.notification_manager import notify
+from utils.notification_manager import notify
 
 analytics_router = APIRouter(prefix="/analytics", tags=["Analytics"])
 

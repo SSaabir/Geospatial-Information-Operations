@@ -5,18 +5,16 @@ from typing import TypedDict, Optional, List
 from langchain_groq import ChatGroq
 import numpy as np
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Engine
 from langchain.tools import tool
 import urllib.request
 import json
-import psycopg2
 from langchain_experimental.sql import SQLDatabaseChain
 from langchain_community.utilities import SQLDatabase
 from langchain.chains import create_sql_query_chain
 
 import re, time, os
 from datetime import date, datetime
-from dotenv import load_dotenv
 from dotenv import load_dotenv
 
 # ====================================================================
@@ -61,11 +59,29 @@ tools = load_tools(["serpapi", "requests_all"],
                    allow_dangerous_tools=True
                    )
 
-# 2️⃣ Create SQLAlchemy engine using environment variables
-engine = create_engine(os.getenv("DATABASE_URL"))
-db = SQLDatabase(engine)
-sql_chain = create_sql_query_chain(llm, db)
+from typing import Optional
 
+# Database state globals
+engine: Optional[Engine] = None
+db: Optional[SQLDatabase] = None
+sql_chain = None
+
+def initialize_db(db_engine: Engine) -> None:
+    """
+    Initialize database connection using engine from orchestrator.
+    This must be called before using any database-related functionality.
+    
+    Args:
+        db_engine: SQLAlchemy Engine instance provided by the orchestrator
+    """
+    global engine, db, sql_chain
+    if not isinstance(db_engine, Engine):
+        raise TypeError("db_engine must be a SQLAlchemy Engine instance")
+    
+    engine = db_engine
+    db = SQLDatabase(engine)
+    sql_chain = create_sql_query_chain(llm, db)
+    print("✅ Database connection initialized with orchestrator engine")
 
 
 #Preprocess the data
@@ -168,16 +184,26 @@ def upload_to_postgresql(file_path: str) -> str:
 
 
 @tool("query_postgresql_tool", return_direct=True)
+
 def query_postgresql_tool(question: str) -> str:
     """
     Safely convert a natural-language question into a SQL SELECT using LangChain's SQLDatabaseChain.
     Implements intelligent result truncation and caching to prevent token limit issues.
     """
     import hashlib
-    
+    global db, sql_chain, engine
+
+    # Ensure db and sql_chain are initialized
+    if db is None or sql_chain is None:
+        if engine is None:
+            from db_config import get_database_engine
+            engine = get_database_engine()
+        db = SQLDatabase(engine)
+        sql_chain = create_sql_query_chain(llm, db)
+
     # Create cache key
     query_hash = hashlib.md5(question.encode()).hexdigest()
-    
+
     # Check cache first
     cached_result = get_cached_result(query_hash)
     if cached_result:
@@ -197,6 +223,18 @@ def query_postgresql_tool(question: str) -> str:
             return match.group(0).strip()
         return text.strip()
 
+    def make_json_serializable(obj):
+        # Recursively convert datetime/date objects to strings in dicts/lists
+        import datetime
+        if isinstance(obj, dict):
+            return {k: make_json_serializable(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [make_json_serializable(v) for v in obj]
+        elif isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        else:
+            return obj
+
     def summarize_large_result(rows, max_rows=50, max_length=5000):
         """
         Intelligently summarize large datasets to prevent token overflow.
@@ -205,8 +243,9 @@ def query_postgresql_tool(question: str) -> str:
         if not rows or len(rows) == 0:
             return {"rows": [], "summary": "No data found"}
 
+        # Convert all rows to JSON-serializable
+        rows = make_json_serializable(rows)
         total_rows = len(rows)
-        
         # If result is small, return as-is
         if total_rows <= max_rows:
             result_str = json.dumps(rows, default=str)
@@ -216,7 +255,6 @@ def query_postgresql_tool(question: str) -> str:
         # For large datasets, create intelligent summary
         sample_size = min(max_rows, total_rows)
         sample_rows = rows[:sample_size]
-        
         # Generate statistics if numeric columns exist
         summary_stats = {}
         if rows and isinstance(rows[0], dict):
@@ -230,7 +268,6 @@ def query_postgresql_tool(question: str) -> str:
                             val = row[key]
                             if isinstance(val, (int, float)) and val is not None:
                                 numeric_values.append(val)
-                    
                     if len(numeric_values) > 5:  # If we have enough numeric data
                         summary_stats[key] = {
                             "count": len(numeric_values),
@@ -240,14 +277,12 @@ def query_postgresql_tool(question: str) -> str:
                         }
                 except:
                     continue
-        
         summary = {
             "total_records": total_rows,
             "sample_size": sample_size,
             "showing": f"First {sample_size} records out of {total_rows} total",
             "statistics": summary_stats if summary_stats else "No numeric data found"
         }
-        
         return {
             "rows": sample_rows,
             "summary": summary,
@@ -299,18 +334,26 @@ def query_postgresql_tool(question: str) -> str:
 
     # Step 5: execute query
     try:
-        raw = db.run(sql_exec)
+        # Use pandas.read_sql for robust, predictable results with column names
+        import pandas as pd
+        if engine is None:
+            from db_config import get_database_engine
+            engine = get_database_engine()
+        df = pd.read_sql(sql_exec, engine)
+        # Convert datetimes to ISO strings and ensure JSON-serializable
+        def _convert(val):
+            try:
+                if hasattr(val, 'isoformat'):
+                    return val.isoformat()
+            except Exception:
+                pass
+            return val
+
+        records = df.to_dict(orient='records')
+        rows = [{k: _convert(v) for k, v in rec.items()} for rec in records]
     except Exception as e:
         error_result = json.dumps({"error": "execution_failed", "details": str(e), "sql": sql_exec})
         return error_result
-
-    # Normalize rows
-    def normalize_rows(r):
-        if isinstance(r, list):
-            return [dict(row) if hasattr(row, "keys") else list(row) for row in r]
-        return str(r)
-
-    rows = normalize_rows(raw)
     
     # Apply intelligent summarization
     result_data = summarize_large_result(rows, max_rows=30, max_length=3000)  # More conservative limits
@@ -369,68 +412,126 @@ def fetch_and_store_weather(city="Colombo", date="yesterday"):
     """Fetch weather data from API and store in PostgreSQL."""
     # Clean up date parameter to avoid URL encoding issues
     import urllib.parse
+    import requests
+    from datetime import datetime
+    import json
+
     clean_date = urllib.parse.quote(date.strip(), safe='')
     
-    # API Call
+    # API Call with proper error handling
     url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city}/{clean_date}?unitGroup=metric&include=days&key=KGCW7SXGVXRYL7ZK7W7SEJSR8&contentType=json"
-    ResultBytes = urllib.request.urlopen(url)
-    jsonData = json.load(ResultBytes)
-    day = jsonData["days"][0]
+    
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # Raise an exception for 4XX/5XX errors
+        jsonData = response.json()
+    except requests.exceptions.HTTPError as e:
+        if e.response.status_code == 404:
+            raise Exception(f"Weather data not found for {city} on {date}. Please check the city name and date.")
+        elif e.response.status_code == 401 or e.response.status_code == 403:
+            raise Exception("API key error or rate limit exceeded. Please check your API key configuration.")
+        else:
+            raise Exception(f"API request failed: {str(e)}")
+    except requests.exceptions.Timeout:
+        raise Exception(f"API request timed out after 10 seconds for {city}")
+    except requests.exceptions.RequestException as e:
+        raise Exception(f"API request failed: {str(e)}")
+    except json.JSONDecodeError:
+        raise Exception("Invalid JSON response from weather API")
+    
+    # Validate response structure
+    if not jsonData.get("days"):
+        raise Exception(f"No weather data available for {city} on {date}")
+        
+    try:
+        day = jsonData["days"][0]
+    except (KeyError, IndexError):
+        raise Exception("Unexpected API response format - missing days data")
 
     # Map to schema
-    weather_info = {
-        "country": "Sri Lanka",
-        "statedistrict": city,
-        "datetime": day["datetime"],
-        "tempmax": day.get("tempmax"),
-        "tempmin": day.get("tempmin"),
-        "temp": day.get("temp"),
-        "humidity": day.get("humidity"),
-        "rain": day.get("precip", 0) > 0,
-        "rainsum": day.get("precip"),
-        "snow": day.get("snow", 0) > 0,
-        "snowdepth": day.get("snowdepth"),
-        "windgust": day.get("windgust"),
-        "windspeed": day.get("windspeed"),
-        "winddir": day.get("winddir"),
-        "sealevelpressure": day.get("pressure"),
-        "cloudcover": day.get("cloudcover"),
-        "visibility": day.get("visibility"),
-        "solarradiation": day.get("solarradiation"),
-        "solarenergy": day.get("solarenergy"),
-        "uvindex": day.get("uvindex"),
-        "sunrise": day.get("sunrise"),
-        "sunset": day.get("sunset"),
-        "moonphase": day.get("moonphase"),
-        "conditions": day.get("conditions"),
-        "description": day.get("description"),
-        "icon": day.get("icon")
-    }
+    # Validate critical fields from API response
+    required_fields = ["datetime", "temp"]
+    missing_fields = [field for field in required_fields if field not in day]
+    if missing_fields:
+        raise Exception(f"Missing required weather data fields: {', '.join(missing_fields)}")
 
-    # Insert into DB
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "GISDb"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASSWORD")
-    )
-    cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO weather_data (
-        country, statedistrict, datetime, tempmax, tempmin, temp, humidity,
-        rain, rainsum, snow, snowdepth, windgust, windspeed, winddir,
-        sealevelpressure, cloudcover, visibility, solarradiation, solarenergy,
-        uvindex, sunrise, sunset, moonphase, conditions, description, icon
-    ) VALUES (
-        %(country)s, %(statedistrict)s, %(datetime)s, %(tempmax)s, %(tempmin)s, %(temp)s, %(humidity)s,
-        %(rain)s, %(rainsum)s, %(snow)s, %(snowdepth)s, %(windgust)s, %(windspeed)s, %(winddir)s,
-        %(sealevelpressure)s, %(cloudcover)s, %(visibility)s, %(solarradiation)s, %(solarenergy)s,
-        %(uvindex)s, %(sunrise)s, %(sunset)s, %(moonphase)s, %(conditions)s, %(description)s, %(icon)s
-    )
-    """, weather_info)
-    conn.commit()
-    cursor.close()
-    conn.close()
+    # Map and validate weather data with defaults
+    try:
+        weather_info = {
+            "country": "Sri Lanka",
+            "statedistrict": city,
+            "datetime": day["datetime"],  # Required field
+            "tempmax": float(day.get("tempmax", 0)) if day.get("tempmax") is not None else None,
+            "tempmin": float(day.get("tempmin", 0)) if day.get("tempmin") is not None else None,
+            "temp": float(day["temp"]),  # Required field
+            "humidity": float(day.get("humidity", 0)) if day.get("humidity") is not None else None,
+            "rain": bool(day.get("precip", 0) > 0),
+            "rainsum": float(day.get("precip", 0)) if day.get("precip") is not None else 0.0,
+            "snow": bool(day.get("snow", 0) > 0),
+            "snowdepth": float(day.get("snowdepth", 0)) if day.get("snowdepth") is not None else 0.0,
+            "windgust": float(day.get("windgust", 0)) if day.get("windgust") is not None else None,
+            "windspeed": float(day.get("windspeed", 0)) if day.get("windspeed") is not None else None,
+            "winddir": float(day.get("winddir", 0)) if day.get("winddir") is not None else None,
+            "sealevelpressure": float(day.get("pressure", 0)) if day.get("pressure") is not None else None,
+            "cloudcover": float(day.get("cloudcover", 0)) if day.get("cloudcover") is not None else None,
+            "visibility": float(day.get("visibility", 0)) if day.get("visibility") is not None else None,
+            "solarradiation": float(day.get("solarradiation", 0)) if day.get("solarradiation") is not None else None,
+            "solarenergy": float(day.get("solarenergy", 0)) if day.get("solarenergy") is not None else None,
+            "uvindex": float(day.get("uvindex", 0)) if day.get("uvindex") is not None else None,
+            "sunrise": day.get("sunrise"),
+            "sunset": day.get("sunset"),
+            "moonphase": float(day.get("moonphase", 0)) if day.get("moonphase") is not None else None,
+            "conditions": str(day.get("conditions", "")) or "Unknown",
+            "description": str(day.get("description", "")) or None,
+            "icon": str(day.get("icon", "")) or None
+        }
+    except (ValueError, TypeError) as e:
+        raise Exception(f"Error processing weather data fields: {str(e)}")
+
+    # Validate data types and ranges
+    try:
+        # Temperature range validation (-100 to +100 Celsius should cover all scenarios)
+        for temp_field in ["temp", "tempmax", "tempmin"]:
+            if weather_info.get(temp_field) is not None:
+                if not -100 <= weather_info[temp_field] <= 100:
+                    raise ValueError(f"Invalid temperature value for {temp_field}: {weather_info[temp_field]}")
+        
+        # Humidity validation (0-100%)
+        if weather_info["humidity"] is not None and not 0 <= weather_info["humidity"] <= 100:
+            raise ValueError(f"Invalid humidity value: {weather_info['humidity']}")
+        
+        # Date validation
+        datetime.strptime(weather_info["datetime"], "%Y-%m-%d")  # Will raise ValueError if invalid
+        
+    except ValueError as e:
+        raise Exception(f"Data validation error: {str(e)}")
+
+    # Check database connection
+    if engine is None:
+        raise RuntimeError("Database not initialized. Call initialize_db first.")
+        
+    # Convert data into DataFrame for SQLAlchemy insertion
+    import pandas as pd
+    df = pd.DataFrame([weather_info])
+    
+    # Attempt database insertion with detailed error handling
+    try:
+        df.to_sql('weather_data', engine, if_exists='append', index=False)
+        print(f"✅ Weather data for {city} ({weather_info['datetime']}) stored successfully")
+        
+        # Log successful insertion
+        with open("collector_log.txt", "a") as log:
+            log.write(f"{datetime.now().isoformat()}: Successfully stored weather data for {city} on {weather_info['datetime']}\n")
+            
+    except Exception as e:
+        error_msg = f"Error storing weather data: {str(e)}"
+        print(f"❌ {error_msg}")
+        
+        # Log error
+        with open("collector_error_log.txt", "a") as error_log:
+            error_log.write(f"{datetime.now().isoformat()}: {error_msg} - City: {city}, Date: {weather_info['datetime']}\n")
+            
+        raise RuntimeError(error_msg)
 
     return weather_info
 
@@ -668,29 +769,63 @@ def run_collector_agent(query: str) -> str:
 
     """
     Run the collector agent with the given query and return the optimized output.
-    Includes additional token optimization at the agent level.
+    If the query is a direct SQL query, skip LLM/tool initialization and run SQL directly.
     """
-    import json  # Import at function start to avoid conflicts
-    
+    import json
+    global engine
+    if query.strip().startswith('query_postgresql_tool'):
+        # Direct SQL query mode (no LLM/tools needed)
+        if engine is None:
+            from db_config import get_database_engine
+            engine = get_database_engine()
+        sql = query.replace('query_postgresql_tool', '').strip()
+        import pandas as pd
+        try:
+            df = pd.read_sql(sql, engine)
+        except Exception as e:
+            return json.dumps({"error": "execution_failed", "details": str(e), "sql": sql})
+
+        # Convert records to JSON-serializable dicts
+        records = df.to_dict(orient='records')
+        def _conv(v):
+            try:
+                if hasattr(v, 'isoformat'):
+                    return v.isoformat()
+            except Exception:
+                pass
+            return v
+
+        rows = [{k: _conv(v) for k, v in rec.items()} for rec in records]
+
+        # Build a simple summary and return structured JSON so orchestrator/frontend can parse
+        data_obj = {
+            "rows": rows,
+            "summary": "No data found" if len(rows) == 0 else {"total_records": len(rows), "showing": f"Showing {len(rows)} records"},
+            "truncated": False if len(rows) <= 200 else True
+        }
+
+        output = {
+            "sql": sql,
+            "row_count": len(rows),
+            "data": data_obj,
+            "token_optimized": True,
+            "cached": False
+        }
+
+        return json.dumps(output, default=str)
+    # Otherwise, use the agent workflow (LLM/tools)
     try:
         result = app.invoke({"input": query})
         output = result.get("output", "")
-        
-        # Apply additional token optimization at agent level
-        if len(output) > 10000:  # If output is very large
+        if len(output) > 10000:
             try:
-                # Try to parse and summarize if it's JSON
                 data = json.loads(output)
-                
-                # Create a summarized version
                 summary = {
                     "query": query,
                     "result_type": "summarized",
                     "data_summary": "Large dataset truncated for token efficiency",
                     "note": "Full data available through direct database queries"
                 }
-                
-                # Include key statistics if available
                 if isinstance(data, dict):
                     if "row_count" in data:
                         summary["record_count"] = data["row_count"]
@@ -698,17 +833,11 @@ def run_collector_agent(query: str) -> str:
                         if "summary" in data["data"]:
                             summary["statistics"] = data["data"]["summary"]
                         if "rows" in data["data"] and len(data["data"]["rows"]) > 0:
-                            summary["sample_data"] = data["data"]["rows"][:3]  # Just 3 sample rows
-                
+                            summary["sample_data"] = data["data"]["rows"][:3]
                 return json.dumps(summary, default=str)
-                
             except (json.JSONDecodeError, Exception):
-                # If not JSON or parsing fails, truncate as text
-                truncated = output[:5000] + "... [TRUNCATED FOR TOKEN EFFICIENCY]"
-                return truncated
-        
+                return output[:5000] + "... [TRUNCATED FOR TOKEN EFFICIENCY]"
         return output
-        
     except Exception as e:
         error_response = {
             "error": f"Collector agent failed: {str(e)}",
@@ -804,19 +933,14 @@ def setup_daily_weather_collection():
     print(f"⏰ Collection time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Check database connection first
+    if engine is None:
+        error_msg = "Database not initialized. Call initialize_db first."
+        print(f"❌ {error_msg}")
+        return {"error": error_msg}
+        
     try:
-        conn = psycopg2.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            database=os.getenv("DB_NAME", "GISDb"),
-            user=os.getenv("DB_USER", "postgres"),
-            password=os.getenv("DB_PASSWORD")
-        )
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM weather_data")
-        record_count = cursor.fetchone()[0]
-        cursor.close()
-        conn.close()
-        print(f"📊 Current database records: {record_count}")
+        result = engine.execute("SELECT COUNT(*) FROM weather_data").scalar()
+        print(f"📊 Current database records: {result}")
         print("✅ Database connection verified")
     except Exception as e:
         print(f"❌ Database connection failed: {str(e)}")

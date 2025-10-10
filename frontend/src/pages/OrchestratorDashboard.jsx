@@ -52,11 +52,15 @@ ChartJS.register(
 
 const OrchestratorDashboard = () => {
   const { apiCall } = useAuth();
+  // Simple mock rows to demo table rendering when backend isn't running
   const [query, setQuery] = useState('');
   const [workflowPreview, setWorkflowPreview] = useState(null);
   const [executionResults, setExecutionResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('query');
+
+  // A sample execution result object that mimics backend response structure
+  // (Demo/test artifacts removed) — execution results come from backend and are rendered per-card
 
   // Workflow type icons and colors with modern purple theme
   const workflowConfig = {
@@ -248,11 +252,67 @@ const OrchestratorDashboard = () => {
   };
 
   const parseWorkflowResult = (result) => {
-    if (!result || typeof result !== 'object') return null;
-    
-    // Handle different workflow types
-    const workflowType = result.workflow_type;
-    
+    if (!result) return null;
+
+    // Helper: safe JSON parse that returns original value on failure
+    const safeParseJSON = (v) => {
+      if (typeof v !== 'string') return v;
+      try {
+        return JSON.parse(v);
+      } catch (e) {
+        // Remove surrounding single quotes if present and retry
+        const trimmed = v.trim();
+        if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+          try { return JSON.parse(trimmed); } catch (_) { return v; }
+        }
+        return v;
+      }
+    };
+
+    // Normalize result which can be nested: some agents put JSON under result (string) or collector outputs
+    let resolved = result;
+    if (typeof result === 'string') {
+      resolved = safeParseJSON(result);
+    }
+
+    // Helper to extract a JSON object embedded inside a larger text blob (e.g., raw_output)
+    const extractJsonFromText = (text) => {
+      if (typeof text !== 'string') return null;
+      const first = text.indexOf('{');
+      const last = text.lastIndexOf('}');
+      if (first === -1 || last === -1 || last <= first) return null;
+      const candidate = text.slice(first, last + 1);
+      try {
+        return JSON.parse(candidate);
+      } catch (e) {
+        // try to be liberal: replace newlines that may break parsing
+        try { return JSON.parse(candidate.replace(/\n/g, '\\n')); } catch (_) { return null; }
+      }
+    };
+
+    // If the result object has fields that contain stringified JSON or text with embedded JSON
+    // try to parse them and merge the JSON into the resolved object.
+    const textFields = ['result', 'final_output', 'raw_output', 'output'];
+    for (const field of textFields) {
+      if (resolved && typeof resolved === 'object' && resolved[field] && typeof resolved[field] === 'string') {
+        // First try direct JSON parse
+        const parsedInner = safeParseJSON(resolved[field]);
+        if (parsedInner && typeof parsedInner === 'object') {
+          resolved = { ...resolved, ...parsedInner };
+          continue;
+        }
+
+        // If direct parse failed, attempt to extract JSON substring from text
+        const parsedFromRaw = extractJsonFromText(resolved[field]);
+        if (parsedFromRaw && typeof parsedFromRaw === 'object') {
+          resolved = { ...resolved, ...parsedFromRaw };
+          continue;
+        }
+      }
+    }
+
+    const workflowType = resolved.workflow_type || resolved.type || null;
+
     const parsedResult = {
       type: workflowType,
       data: null,
@@ -261,32 +321,85 @@ const OrchestratorDashboard = () => {
     };
 
     try {
-      // Parse collected data if it's a string
-      if (result.collected_data && typeof result.collected_data === 'string') {
-        parsedResult.data = JSON.parse(result.collected_data);
-      } else if (result.collected_data) {
-        parsedResult.data = result.collected_data;
+      // Collector/tool outputs often put useful payloads in different keys. Check common locations.
+      const candidates = [
+        resolved.data,
+        resolved.data_view,
+        resolved.collected_data,
+        resolved.payload,
+        resolved.output,
+        resolved.rows,
+        resolved.result,
+      ];
+
+      for (const c of candidates) {
+        if (!c) continue;
+        const parsed = safeParseJSON(c);
+        // If parsed is an object with rows or is an array, consider it data
+        if (Array.isArray(parsed)) {
+          parsedResult.data = { rows: parsed };
+          break;
+        }
+        if (parsed && typeof parsed === 'object') {
+          // If it already looks like {rows: [...]}
+          if (Array.isArray(parsed.rows)) {
+            parsedResult.data = parsed;
+            break;
+          }
+          // If object has keys like datetime/temp, treat as single record
+          const keys = Object.keys(parsed);
+          if (keys.length > 0) {
+            parsedResult.data = parsed;
+            break;
+          }
+        }
       }
 
-      // Parse trend analysis if it's a string
-      if (result.trend_analysis && typeof result.trend_analysis === 'string') {
-        parsedResult.analysis = JSON.parse(result.trend_analysis);
-      } else if (result.trend_analysis) {
-        parsedResult.analysis = result.trend_analysis;
-      }
-
-      // Parse comprehensive report if available
-      if (result.comprehensive_report && typeof result.comprehensive_report === 'string') {
-        parsedResult.summary = JSON.parse(result.comprehensive_report);
-      } else if (result.comprehensive_report) {
-        parsedResult.summary = result.comprehensive_report;
-      }
+      // Trend analysis / summary
+      if (resolved.trend_analysis) parsedResult.analysis = safeParseJSON(resolved.trend_analysis);
+      if (resolved.analysis_results) parsedResult.analysis = parsedResult.analysis || resolved.analysis_results;
+      if (resolved.comprehensive_report) parsedResult.summary = safeParseJSON(resolved.comprehensive_report);
+      if (!parsedResult.summary && resolved.summary) parsedResult.summary = safeParseJSON(resolved.summary);
 
     } catch (e) {
       console.warn('Error parsing workflow result:', e);
     }
 
     return parsedResult;
+  };
+
+  // Utility: safe JSON parse available to rendering logic
+  const safeParseJSON = (v) => {
+    if (typeof v !== 'string') return v;
+    try { return JSON.parse(v); } catch (e) {
+      const trimmed = v.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try { return JSON.parse(trimmed); } catch (_) { return v; }
+      }
+      return v;
+    }
+  };
+
+  const formatCell = (val) => {
+    if (val === null || val === undefined) return <span className="text-gray-400">—</span>;
+    if (typeof val === 'string') {
+      // Try ISO date detection
+      const isoDate = Date.parse(val);
+      if (!isNaN(isoDate) && val.match(/^\d{4}-\d{2}-\d{2}/)) {
+        return new Date(val).toLocaleString();
+      }
+      // Try to pretty-print JSON strings
+      try {
+        const parsed = JSON.parse(val);
+        return <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(parsed, null, 2)}</pre>;
+      } catch (e) {
+        return val;
+      }
+    }
+    if (typeof val === 'object') {
+      try { return <pre className="whitespace-pre-wrap text-sm">{JSON.stringify(val, null, 2)}</pre>; } catch (e) { return String(val); }
+    }
+    return String(val);
   };
 
   const analyzeQueryIntent = (query) => {
@@ -416,97 +529,128 @@ const OrchestratorDashboard = () => {
     }
 
     // Wind & Pressure Card
-    if (intent.showWind || intent.showAll) {
-      cards.push(
-        <div key="wind" className="bg-white rounded-lg p-4 border border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-              <Wind className="w-4 h-4 text-green-600" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-800">Wind & Pressure</h4>
-              <p className="text-sm text-gray-600">Atmospheric conditions</p>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Wind Speed:</span>
-              <span className="font-semibold text-green-600">{data.windspeed} km/h</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Pressure:</span>
-              <span className="font-semibold text-gray-600">{data.sealevelpressure} hPa</span>
-            </div>
-            {(intent.showUV || intent.showAll) && (
-              <div className="flex justify-between">
-                <span className="text-gray-600">UV Index:</span>
-                <span className="font-semibold text-orange-600">{data.uvindex}</span>
+    if (!data) return null;
+
+    // If data has a 'rows' array (SQL result), render as table
+    if (Array.isArray(data.rows)) {
+      const rows = data.rows;
+      if (rows.length === 0) return <div className="text-gray-500">No data found.</div>;
+      // Ensure rows are objects (parse strings if needed)
+      const normalizedRows = rows.map(r => (typeof r === 'string' ? safeParseJSON(r) : r));
+      const columns = Object.keys(normalizedRows[0]);
+      return (
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                {columns.map((col) => (
+                  <th key={col} className="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">{col}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-100">
+              {normalizedRows.map((row, idx) => (
+                <tr key={idx}>
+                  {columns.map((col) => (
+                    <td key={col} className="px-4 py-2 text-sm text-gray-800">{formatCell(row ? row[col] : null)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    } else {
+      // Fallback: old card view for single object
+      const intent = analyzeQueryIntent(query);
+      const cards = [];
+
+      // Temperature Card
+      if (intent.showTemperature || intent.showAll) {
+        cards.push(
+          <div key="temperature" className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Thermometer className="w-4 h-4 text-blue-600" />
               </div>
-            )}
+              <div>
+                <h4 className="font-semibold text-gray-800">Temperature</h4>
+                <p className="text-sm text-gray-600">{data.statedistrict}, {data.country}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Current:</span>
+                <span className="font-semibold text-blue-600">{data.temp}°C</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Max:</span>
+                <span className="text-red-500">{data.tempmax}°C</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Min:</span>
+                <span className="text-blue-500">{data.tempmin}°C</span>
+              </div>
+            </div>
           </div>
-        </div>
-      );
-    }
+        );
+      }
 
-    // UV/Solar Card (separate if specifically requested)
-    if (intent.showUV && !intent.showWind && !intent.showAll) {
-      cards.push(
-        <div key="uv" className="bg-white rounded-lg p-4 border border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-              <Sun className="w-4 h-4 text-orange-600" />
+      // Precipitation Card
+      if (intent.showPrecipitation || intent.showAll) {
+        cards.push(
+          <div key="precipitation" className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center">
+                <Droplets className="w-4 h-4 text-cyan-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-800">Precipitation</h4>
+                <p className="text-sm text-gray-600">Humidity & Rain</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-800">Solar & UV</h4>
-              <p className="text-sm text-gray-600">Sun exposure data</p>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Humidity:</span>
+                <span className="font-semibold text-cyan-600">{data.humidity}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Rain:</span>
+                <span className={`font-semibold ${data.rain ? 'text-blue-600' : 'text-gray-400'}`}>
+                  {data.rain ? `${data.rainsum}mm` : 'No rain'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Clouds:</span>
+                <span className="font-semibold text-gray-600">{data.cloudcover}%</span>
+              </div>
             </div>
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">UV Index:</span>
-              <span className="font-semibold text-orange-600">{data.uvindex}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Solar Radiation:</span>
-              <span className="font-semibold text-yellow-600">{data.solarradiation} W/m²</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
+        );
+      }
 
-    // Visibility Card (if specifically requested)
-    if (intent.showVisibility && !intent.showAll) {
-      cards.push(
-        <div key="visibility" className="bg-white rounded-lg p-4 border border-gray-200">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Eye className="w-4 h-4 text-purple-600" />
+      // Wind & Pressure Card
+      if (intent.showWind || intent.showAll) {
+        cards.push(
+          <div key="wind" className="bg-white rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <Wind className="w-4 h-4 text-green-600" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-800">Wind & Pressure</h4>
+                <p className="text-sm text-gray-600">Atmospheric conditions</p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-800">Visibility</h4>
-              <p className="text-sm text-gray-600">Atmospheric clarity</p>
-            </div>
+            {/* ...existing code for wind card... */}
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-gray-600">Visibility:</span>
-              <span className="font-semibold text-purple-600">{data.visibility} km</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-600">Cloud Cover:</span>
-              <span className="font-semibold text-gray-600">{data.cloudcover}%</span>
-            </div>
-          </div>
-        </div>
-      );
-    }
+        );
+      }
 
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-        {cards}
-      </div>
-    );
+      // ...other cards as needed...
+
+      return <div className="grid md:grid-cols-2 gap-6">{cards}</div>;
+    }
   };
 
   const renderTrendAnalysis = (analysis, query = '') => {
@@ -1007,7 +1151,9 @@ const OrchestratorDashboard = () => {
   const renderExecutionResult = (result) => {
     const config = workflowConfig[result.workflow_type] || workflowConfig.data_view;
     const Icon = config.icon;
-    const parsedResult = parseWorkflowResult(result.result);
+    // Accept either result.result (nested) or result (top-level)
+    const raw = result?.result || result;
+    const parsedResult = parseWorkflowResult(raw);
 
     return (
       <div key={result.request_id} className="dashboard-card mb-6 hover:shadow-xl transition-all duration-300">
@@ -1061,7 +1207,7 @@ const OrchestratorDashboard = () => {
             </div>
           )}
 
-          {result.result && parsedResult && (
+          {parsedResult && (
             <div className="space-y-4">
               {/* Current Weather Data */}
               {parsedResult.data && (
@@ -1113,7 +1259,7 @@ const OrchestratorDashboard = () => {
                 </summary>
                 <div className="p-4 border-t border-gray-200">
                   <pre className="text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap">
-                    {JSON.stringify(result.result, null, 2)}
+                    {JSON.stringify(result?.result || result, null, 2)}
                   </pre>
                 </div>
               </details>
@@ -1240,7 +1386,11 @@ const OrchestratorDashboard = () => {
                         <p className="text-gray-600">View your workflow execution history</p>
                       </div>
                     </div>
+
+                    {/* Global SQL preview removed — SQL tables are rendered only within each execution result card */}
+
                     
+
                     {executionResults.length === 0 ? (
                       <div className="text-center py-12">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">

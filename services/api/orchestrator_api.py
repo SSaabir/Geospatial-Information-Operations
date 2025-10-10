@@ -15,22 +15,33 @@ from sqlalchemy.orm import Session
 import logging
 import json
 import asyncio
+import traceback
 from datetime import datetime
 from sqlalchemy.orm import Session
 
 # Import orchestrator and agents
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
+import logging
+from pathlib import Path
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Add the agents directory to the Python path
+agents_path = Path(__file__).parent.parent / 'agents'
+if str(agents_path) not in sys.path:
+    sys.path.insert(0, str(agents_path))
+
 try:
-    # Imported from services/agents/orchestrator.py
-    from orchestrator import run_orchestrator_workflow, classify_user_intent  # type: ignore
+    from orchestrator import run_enhanced_orchestrator_workflow, classify_user_intent
+    # Create an alias for backward compatibility
+    run_orchestrator_workflow = run_enhanced_orchestrator_workflow
 except Exception as e:
-    # Fallbacks for static analysis or missing module
-    run_orchestrator_workflow = None  # type: ignore
-    def classify_user_intent(query: str) -> str:
-        # conservative default
-        return "data_view"
+    logger.error(f"Failed to import orchestrator: {e}")
+    logger.error(f"Python path: {sys.path}")
+    logger.error(f"Looking for orchestrator in: {agents_path}")
+    raise RuntimeError(f"Failed to initialize orchestrator: {e}")
 
 from security.auth_middleware import get_current_user, get_optional_user
 from models.user import UserDB
@@ -38,7 +49,7 @@ from db_config import DatabaseConfig
 from models.usage import UsageMetrics
 from middleware.event_logger import log_auth_event, increment_usage_metrics
 from utils.tier import enforce_quota_or_raise, get_limit_for_tier
-from services.utils.notification_manager import notify
+from utils.notification_manager import notify
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -236,7 +247,7 @@ async def execute_workflow(
         if not metrics:
             metrics = UsageMetrics(user_id=current_user.id)
             db.add(metrics)
-        metrics.api_calls += 1
+        metrics.api_calls = (metrics.api_calls or 0) + 1
         db.commit()
         try:
             log_auth_event("workflow_execute", current_user.id, True)
@@ -349,7 +360,7 @@ async def execute_workflow(
             
             # Consider report generation as part of full_summary
             if inferred_type == "full_summary":
-                metrics.reports_generated += 1
+                metrics.reports_generated = (metrics.reports_generated or 0) + 1
                 db.commit()
                 try:
                     increment_usage_metrics(current_user.id, reports_generated=1)
@@ -381,18 +392,37 @@ async def execute_workflow(
             
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
-        logger.error(f"Workflow execution failed: {e}")
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'traceback': traceback.format_exc()
+        }
+        logger.error(f"Workflow execution failed: {error_details['error_type']}: {error_details['error_message']}")
+        logger.debug(f"Error traceback:\n{error_details['traceback']}")
         
-        return WorkflowResponse(
-            request_id=request_id,
-            workflow_type="error",
-            query=request.query,
-            status="failed",
-            execution_time_ms=execution_time,
-            result=None,
-            error=f"Workflow execution failed: {str(e)}",
-            timestamp=datetime.utcnow().isoformat(),
-            user_id=current_user.id
+        # Try to extract meaningful error information
+        error_message = str(e)
+        if hasattr(e, 'detail'):  # FastAPI HTTPException
+            error_message = str(e.detail)
+        elif hasattr(e, 'orig'):  # SQLAlchemy error
+            error_message = str(e.orig)
+        elif "'NoneType' object is not callable" in str(e):
+            error_message = "Orchestrator workflow failed to initialize. Please check the orchestrator configuration."
+            
+        # Raise HTTP exception with error details
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "request_id": request_id,
+                "workflow_type": "error",
+                "query": request.query,
+                "status": "failed",
+                "execution_time_ms": execution_time,
+                "result": None,
+                "error": f"Workflow execution failed: {error_message}",
+                "timestamp": datetime.utcnow().isoformat(),
+                "user_id": current_user.id
+            }
         )
 
 @orchestrator_router.get("/status/{request_id}", response_model=WorkflowResponse)
@@ -582,6 +612,19 @@ async def _execute_workflow_async(request_id: str, query: str, user_id: int):
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
         
+        error_details = {
+            'error_type': type(e).__name__,
+            'error_message': str(e),
+            'traceback': traceback.format_exc()
+        }
+        
+        # Try to extract meaningful error information
+        error_message = str(e)
+        if hasattr(e, 'detail'):  # FastAPI HTTPException
+            error_message = str(e.detail)
+        elif hasattr(e, 'orig'):  # SQLAlchemy error
+            error_message = str(e.orig)
+        
         result = {
             "request_id": request_id,
             "workflow_type": "error",
@@ -589,10 +632,27 @@ async def _execute_workflow_async(request_id: str, query: str, user_id: int):
             "status": "failed",
             "execution_time_ms": execution_time,
             "result": None,
-            "error": f"Async workflow execution failed: {str(e)}",
+            "error": f"Async workflow execution failed: {error_message}",
             "timestamp": datetime.utcnow().isoformat(),
             "user_id": user_id
         }
         
         workflow_results[request_id] = result
-        logger.error(f"Async workflow {request_id} failed: {e}")
+        logger.error(f"Async workflow {request_id} failed: {error_details['error_type']}: {error_details['error_message']}")
+        logger.debug(f"Error traceback for {request_id}:\n{error_details['traceback']}")
+        
+        # Notify about async failure
+        try:
+            notify(
+                subject="Workflow async failed",
+                message=f"Async workflow {request_id} failed for user_id={user_id}. Error: {error_message}",
+                level='error',
+                metadata={
+                    'user_id': user_id,
+                    'request_id': request_id,
+                    'error_type': error_details['error_type'],
+                    'execution_time_ms': execution_time
+                }
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send async failure notification")
