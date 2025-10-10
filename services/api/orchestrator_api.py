@@ -38,6 +38,7 @@ from db_config import DatabaseConfig
 from models.usage import UsageMetrics
 from middleware.event_logger import log_auth_event, increment_usage_metrics
 from utils.tier import enforce_quota_or_raise, get_limit_for_tier
+from services.utils.notification_manager import notify
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -175,13 +176,25 @@ async def preview_workflow(
             except Exception:
                 pass
 
-        return WorkflowPreview(
+        preview = WorkflowPreview(
             query=request.query,
             workflow_type=workflow_type,
             description=workflow_info["description"],
             estimated_agents=workflow_info["agents"],
             estimated_duration=workflow_info["duration"]
         )
+        # Notify about preview (best-effort, only if user present)
+        try:
+            if current_user:
+                notify(
+                    subject="Workflow preview requested",
+                    message=f"User {current_user.username} (id={current_user.id}) previewed workflow '{workflow_type}'.",
+                    level='info',
+                    metadata={'user_id': current_user.id, 'workflow_type': workflow_type}
+                )
+        except Exception:
+            logger.exception("Non-fatal: failed to send workflow preview notification")
+        return preview
         
     except Exception as e:
         logger.error(f"Workflow preview failed: {e}")
@@ -231,12 +244,36 @@ async def execute_workflow(
         except Exception:
             pass
 
-        # Usage limit checks by tier
-        enforce_quota_or_raise(metrics, tier)
-
-        # Entitlement checks based on inferred workflow type
+        # Determine user tier and usage limit
         inferred_type = classify_user_intent(request.query)
         tier = getattr(current_user, "tier", "free")
+        limit = get_limit_for_tier(tier)
+
+        # Notify when nearing quota (90%) and when exceeded
+        try:
+            if limit != float('inf'):
+                usage_ratio = (metrics.api_calls or 0) / float(limit)
+                if usage_ratio >= 1.0:
+                    # Exceeded - notify and then enforce (will raise)
+                    notify(
+                        subject="Usage limit exceeded",
+                        message=f"User {current_user.username} (id={current_user.id}) exceeded their API quota ({metrics.api_calls}/{limit}).",
+                        level='critical',
+                        metadata={'user_id': current_user.id, 'api_calls': metrics.api_calls, 'limit': limit}
+                    )
+                elif usage_ratio >= 0.9:
+                    # Warning at 90%
+                    notify(
+                        subject="Usage nearing limit",
+                        message=f"User {current_user.username} (id={current_user.id}) has used {metrics.api_calls} of {limit} API calls ({int(usage_ratio*100)}%). Consider upgrading.",
+                        level='warning',
+                        metadata={'user_id': current_user.id, 'api_calls': metrics.api_calls, 'limit': limit}
+                    )
+        except Exception as e:
+            logger.error(f"Failed to send usage notification: {e}")
+
+        # Usage limit enforcement (may raise HTTPException)
+        enforce_quota_or_raise(metrics, tier)
         tier_order = {"free": 0, "researcher": 1, "professional": 2}
         required_tier = {
             "data_view": "free",
@@ -257,6 +294,16 @@ async def execute_workflow(
                 request.query,
                 current_user.id
             )
+            # Notify about async submission
+            try:
+                notify(
+                    subject="Workflow submitted (async)",
+                    message=f"User {current_user.username} (id={current_user.id}) submitted async workflow '{inferred_type}'.",
+                    level='info',
+                    metadata={'user_id': current_user.id, 'request_id': request_id, 'workflow_type': inferred_type}
+                )
+            except Exception:
+                logger.exception("Non-fatal: failed to send async submission notification")
             try:
                 # log async execution submission
                 log_auth_event("workflow_execute_async", current_user.id, True)
@@ -309,7 +356,7 @@ async def execute_workflow(
                 except Exception:
                     pass
 
-            return WorkflowResponse(
+            response_obj = WorkflowResponse(
                 request_id=request_id,
                 workflow_type=workflow_result.get("workflow_type", "unknown"),
                 query=request.query,
@@ -320,6 +367,17 @@ async def execute_workflow(
                 timestamp=datetime.utcnow().isoformat(),
                 user_id=current_user.id
             )
+            # Notify completion for synchronous execution
+            try:
+                notify(
+                    subject="Workflow completed",
+                    message=f"User {current_user.username} (id={current_user.id}) completed workflow '{response_obj.workflow_type}' in {execution_time} ms.",
+                    level='info',
+                    metadata={'user_id': current_user.id, 'request_id': request_id, 'workflow_type': response_obj.workflow_type, 'execution_time_ms': execution_time}
+                )
+            except Exception:
+                logger.exception("Non-fatal: failed to send workflow completion notification")
+            return response_obj
             
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
@@ -430,6 +488,16 @@ async def delete_workflow_result(
             increment_usage_metrics(current_user.id, api_calls=1)
         except Exception:
             pass
+        # Notify about deletion
+        try:
+            notify(
+                subject="Workflow result deleted",
+                message=f"User {current_user.username} (id={current_user.id}) deleted workflow result {request_id}.",
+                level='info',
+                metadata={'user_id': current_user.id, 'request_id': request_id}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send workflow deletion notification")
 
         return {"message": f"Workflow result {request_id} deleted successfully"}
         
@@ -500,6 +568,16 @@ async def _execute_workflow_async(request_id: str, query: str, user_id: int):
                 increment_usage_metrics(user_id, api_calls=1)
         except Exception:
             pass
+        # Notify async completion
+        try:
+            notify(
+                subject="Workflow async completed",
+                message=f"Async workflow {request_id} completed for user_id={user_id}.",
+                level='info',
+                metadata={'user_id': user_id, 'request_id': request_id, 'workflow_type': result.get('workflow_type'), 'execution_time_ms': execution_time}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send async completion notification")
         
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)
