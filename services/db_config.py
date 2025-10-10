@@ -1,12 +1,3 @@
-"""
-Database Configuration Module for Geospatial Information Operations
-
-This module provides centralized database connection management using environment variables.
-It handles PostgreSQL connections with proper error handling and connection pooling.
-
-Author: Saabir
-"""
-
 import os
 import logging
 from typing import Optional
@@ -33,7 +24,12 @@ class DatabaseConfig:
         self.port = os.getenv('DB_PORT', '5432')
         self.database = os.getenv('DB_NAME', 'GISDb')
         self.username = os.getenv('DB_USER', 'postgres')
-        self.password = os.getenv('DB_PASSWORD', '')
+        # Do NOT use a real default password. Require setting DB_PASSWORD via env.
+        self.password = os.getenv('DB_PASSWORD')
+        if not self.password:
+            # Fail fast in non-development environments; keep behavior predictable
+            # For local development you can set DB_PASSWORD in a .env file (not committed)
+            raise RuntimeError("DB_PASSWORD environment variable is required")
         
         # Alternative: Use complete DATABASE_URL if provided
         self.database_url = os.getenv('DATABASE_URL')

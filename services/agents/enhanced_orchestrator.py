@@ -1,0 +1,768 @@
+"""
+Enhanced Multi-Agent Orchestrator with Security and Responsible AI Integration
+Coordinates weather analysis agents with comprehensive security monitoring and ethical oversight
+"""
+
+import os
+import json
+import re
+import logging
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any
+from dataclasses import dataclass, asdict
+from enum import Enum
+import pandas as pd
+from langgraph.graph import StateGraph, END, START
+from typing import TypedDict
+from dotenv import load_dotenv
+
+# Import existing agents
+from collector import run_collector_agent
+from TrendAgent import run_trend_analysis_agent
+from report import generate_summary_report
+from security_agent import run_security_agent, get_security_agent
+from responsible_ai import run_responsible_ai_assessment, get_responsible_ai_framework
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class WorkflowPriority(Enum):
+    """Workflow execution priorities"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+class AgentStatus(Enum):
+    """Agent execution status"""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    SKIPPED = "skipped"
+
+@dataclass
+class AgentResult:
+    """Result from agent execution"""
+    agent_name: str
+    status: AgentStatus
+    execution_time: float
+    output: Any
+    error: Optional[str] = None
+    security_validated: bool = False
+    ethics_validated: bool = False
+    metadata: Optional[Dict] = None
+
+class EnhancedWorkflowState(TypedDict):
+    """Enhanced state for multi-agent workflow with security and ethics"""
+    # User input and workflow management
+    user_input: str
+    workflow_type: str
+    priority: str
+    session_id: str
+    user_context: Optional[Dict]
+    
+    # Agent execution tracking
+    agent_execution_plan: Optional[List[str]]
+    agent_results: Optional[Dict[str, AgentResult]]
+    current_agent: Optional[str]
+    
+    # Core agent outputs
+    collector_result: Optional[str]
+    trend_result: Optional[str]
+    report_result: Optional[str]
+    
+    # Security and ethics monitoring
+    security_assessment: Optional[Dict]
+    ethics_assessment: Optional[Dict]
+    security_alerts: Optional[List]
+    compliance_status: str
+    
+    # Final output and metadata
+    final_output: str
+    execution_summary: Optional[Dict]
+    step: str
+    error: Optional[str]
+    warnings: Optional[List[str]]
+
+class EnhancedOrchestrator:
+    """Enhanced orchestrator with security and responsible AI integration"""
+    
+    def __init__(self):
+        """Initialize enhanced orchestrator"""
+        self.security_agent = get_security_agent()
+        self.responsible_ai = get_responsible_ai_framework()
+        self.execution_history = []
+        self.setup_workflow_rules()
+    
+    def setup_workflow_rules(self):
+        """Setup workflow execution rules and constraints"""
+        self.workflow_rules = {
+            "data_collection": {
+                "requires_security_validation": True,
+                "requires_ethics_check": False,
+                "max_execution_time": 300,  # 5 minutes
+                "retry_attempts": 2
+            },
+            "trend_analysis": {
+                "requires_security_validation": True,
+                "requires_ethics_check": True,
+                "max_execution_time": 600,  # 10 minutes
+                "retry_attempts": 1
+            },
+            "report_generation": {
+                "requires_security_validation": False,
+                "requires_ethics_check": True,
+                "max_execution_time": 300,
+                "retry_attempts": 2
+            }
+        }
+    
+    def classify_user_intent(self, user_query: str) -> Dict[str, Any]:
+        """Enhanced user intent classification with security considerations"""
+        query_lower = user_query.lower()
+        
+        # Security-sensitive keywords
+        sensitive_keywords = [
+            'admin', 'delete', 'drop', 'truncate', 'modify', 'alter',
+            'password', 'credential', 'token', 'key', 'secret'
+        ]
+        
+        # Data access patterns
+        data_keywords = ['show', 'view', 'display', 'list', 'get', 'fetch', 'retrieve']
+        analysis_keywords = ['analyze', 'trend', 'pattern', 'forecast', 'predict', 'model']
+        report_keywords = ['report', 'summary', 'export', 'generate', 'document']
+        
+        classification = {
+            "intent": "unknown",
+            "priority": WorkflowPriority.MEDIUM.value,
+            "security_level": "standard",
+            "requires_human_review": False,
+            "estimated_complexity": "medium"
+        }
+        
+        # Check for security-sensitive operations
+        if any(keyword in query_lower for keyword in sensitive_keywords):
+            classification["security_level"] = "high"
+            classification["requires_human_review"] = True
+            classification["priority"] = WorkflowPriority.HIGH.value
+        
+        # Determine primary intent
+        if any(keyword in query_lower for keyword in data_keywords):
+            if any(keyword in query_lower for keyword in analysis_keywords):
+                classification["intent"] = "collect_analyze"
+                classification["estimated_complexity"] = "high"
+            else:
+                classification["intent"] = "data_view"
+                classification["estimated_complexity"] = "low"
+        elif any(keyword in query_lower for keyword in analysis_keywords):
+            classification["intent"] = "analyze_trends"
+            classification["estimated_complexity"] = "high"
+        elif any(keyword in query_lower for keyword in report_keywords):
+            classification["intent"] = "generate_report"
+            classification["estimated_complexity"] = "medium"
+        
+        # Adjust priority based on urgency indicators
+        urgency_keywords = ['urgent', 'critical', 'emergency', 'immediate', 'asap']
+        if any(keyword in query_lower for keyword in urgency_keywords):
+            classification["priority"] = WorkflowPriority.CRITICAL.value
+        
+        return classification
+    
+    def plan_agent_execution(self, intent_classification: Dict, user_query: str) -> List[str]:
+        """Plan optimal agent execution sequence"""
+        intent = intent_classification["intent"]
+        
+        execution_plans = {
+            "data_view": ["collector"],
+            "collect_analyze": ["collector", "trend_analysis", "security_validation"],
+            "analyze_trends": ["collector", "trend_analysis", "responsible_ai_check"],
+            "generate_report": ["collector", "trend_analysis", "report_generation", "responsible_ai_check"],
+            "full_analysis": ["collector", "trend_analysis", "report_generation", "security_validation", "responsible_ai_check"]
+        }
+        
+        base_plan = execution_plans.get(intent, ["collector", "trend_analysis"])
+        
+        # Add security validation for high-security operations
+        if intent_classification["security_level"] == "high":
+            if "security_validation" not in base_plan:
+                base_plan.insert(-1, "security_validation")
+        
+        # Add responsible AI check for analysis operations
+        if "analyze" in intent or "predict" in user_query.lower():
+            if "responsible_ai_check" not in base_plan:
+                base_plan.append("responsible_ai_check")
+        
+        return base_plan
+
+def enhanced_start_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
+    """Enhanced workflow initialization with security and ethics setup"""
+    state["step"] = "initializing"
+    state["session_id"] = datetime.now().strftime("%Y%m%d_%H%M%S")
+    state["warnings"] = []
+    state["compliance_status"] = "pending"
+    
+    try:
+        orchestrator = EnhancedOrchestrator()
+        
+        # Classify user intent with security considerations
+        intent_classification = orchestrator.classify_user_intent(state["user_input"])
+        state["workflow_type"] = intent_classification["intent"]
+        state["priority"] = intent_classification["priority"]
+        
+        # Plan agent execution
+        execution_plan = orchestrator.plan_agent_execution(intent_classification, state["user_input"])
+        state["agent_execution_plan"] = execution_plan
+        state["agent_results"] = {}
+        
+        # Security pre-check for high-risk operations
+        if intent_classification["security_level"] == "high":
+            state["warnings"].append("High-security operation detected - enhanced monitoring enabled")
+        
+        if intent_classification["requires_human_review"]:
+            state["warnings"].append("Operation requires human review - flagged for manual oversight")
+        
+        logger.info(f"🚀 Enhanced workflow initialized: {state['workflow_type']} (Priority: {state['priority']})")
+        logger.info(f"📋 Execution plan: {execution_plan}")
+        
+    except Exception as e:
+        state["error"] = f"Workflow initialization failed: {str(e)}"
+        logger.error(f"❌ Initialization error: {e}")
+    
+    return state
+
+def enhanced_collector_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
+    """Enhanced data collection with security validation"""
+    state["step"] = "collecting_data"
+    state["current_agent"] = "collector"
+    
+    try:
+        start_time = datetime.now()
+        logger.info(f"🔄 Starting Enhanced Collector Agent...")
+        
+        # Execute collector agent
+        collector_result = run_collector_agent(state["user_input"])
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        # Security validation of collected data
+        security_input = {
+            "data": collector_result,
+            "source": "collector_agent",
+            "user_id": state.get("user_context", {}).get("user_id", "unknown"),
+            "action": "data_collection",
+            "session_id": state["session_id"]
+        }
+        
+        security_result = run_security_agent(security_input)
+        security_data = json.loads(security_result)
+        
+        # Store results
+        state["collector_result"] = collector_result
+        state["security_assessment"] = security_data
+        
+        # Create agent result record
+        state["agent_results"]["collector"] = AgentResult(
+            agent_name="collector",
+            status=AgentStatus.COMPLETED if not security_data.get("error") else AgentStatus.FAILED,
+            execution_time=execution_time,
+            output=collector_result,
+            security_validated=security_data.get("security_status") != "HIGH_RISK",
+            metadata={"security_assessment": security_data}
+        )
+        
+        # Handle security violations
+        if security_data.get("security_status") == "HIGH_RISK":
+            state["warnings"].append("High-risk security status detected in data collection")
+            state["compliance_status"] = "security_violation"
+            
+            # Stop workflow for critical security issues
+            if security_data.get("risk_score", 0) > 0.8:
+                state["error"] = "Workflow terminated due to critical security violation"
+                return state
+        
+        logger.info(f"✅ Enhanced Collector completed: {execution_time:.2f}s")
+        logger.info(f"🔒 Security Status: {security_data.get('security_status', 'Unknown')}")
+        
+    except Exception as e:
+        state["error"] = f"Enhanced collector failed: {str(e)}"
+        state["agent_results"]["collector"] = AgentResult(
+            agent_name="collector",
+            status=AgentStatus.FAILED,
+            execution_time=0,
+            output=None,
+            error=str(e)
+        )
+        logger.error(f"❌ Enhanced Collector error: {e}")
+    
+    return state
+
+def enhanced_trend_analysis_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
+    """Enhanced trend analysis with responsible AI monitoring"""
+    state["step"] = "analyzing_trends"
+    state["current_agent"] = "trend_analysis"
+    
+    try:
+        start_time = datetime.now()
+        logger.info(f"🔬 Starting Enhanced Trend Analysis...")
+        
+        # Extract date range from user input
+        date_pattern = r'(\d{4}-\d{2}-\d{2})'
+        dates = re.findall(date_pattern, state["user_input"])
+        start_date = dates[0] if len(dates) > 0 else None
+        end_date = dates[1] if len(dates) > 1 else None
+        
+        # Execute trend analysis
+        trend_result = run_trend_analysis_agent(
+            state["user_input"],
+            start_date=start_date,
+            end_date=end_date
+        )
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        # Responsible AI assessment
+        if state.get("collector_result"):
+            try:
+                # Parse collector result for training data
+                training_data = state["collector_result"]
+                if isinstance(training_data, str):
+                    training_data = json.loads(training_data) if training_data.startswith('{') else []
+                
+                # Parse trend result for predictions
+                predictions = trend_result
+                if isinstance(predictions, str):
+                    predictions = json.loads(predictions) if predictions.startswith('{') else []
+                
+                model_metadata = {
+                    "name": "weather_trend_model",
+                    "version": "1.0",
+                    "algorithm": "Time Series Analysis",
+                    "session_id": state["session_id"]
+                }
+                
+                ethics_result = run_responsible_ai_assessment(
+                    predictions, training_data, model_metadata
+                )
+                state["ethics_assessment"] = json.loads(ethics_result)
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Responsible AI assessment failed: {e}")
+                state["warnings"].append(f"Ethics assessment failed: {str(e)}")
+        
+        # Store results
+        state["trend_result"] = trend_result
+        
+        # Determine ethics compliance
+        ethics_compliant = True
+        if state.get("ethics_assessment"):
+            ethics_level = state["ethics_assessment"].get("ethics_level", "compliant")
+            ethics_compliant = ethics_level not in ["major_concern", "critical_violation"]
+        
+        state["agent_results"]["trend_analysis"] = AgentResult(
+            agent_name="trend_analysis",
+            status=AgentStatus.COMPLETED,
+            execution_time=execution_time,
+            output=trend_result,
+            ethics_validated=ethics_compliant,
+            metadata={"ethics_assessment": state.get("ethics_assessment")}
+        )
+        
+        # Handle ethics violations
+        if not ethics_compliant:
+            state["warnings"].append("Ethics compliance issues detected in trend analysis")
+            if state["ethics_assessment"].get("ethics_level") == "critical_violation":
+                state["compliance_status"] = "ethics_violation"
+        
+        logger.info(f"✅ Enhanced Trend Analysis completed: {execution_time:.2f}s")
+        logger.info(f"🤖 Ethics Status: {'Compliant' if ethics_compliant else 'Issues Detected'}")
+        
+    except Exception as e:
+        state["error"] = f"Enhanced trend analysis failed: {str(e)}"
+        state["agent_results"]["trend_analysis"] = AgentResult(
+            agent_name="trend_analysis",
+            status=AgentStatus.FAILED,
+            execution_time=0,
+            output=None,
+            error=str(e)
+        )
+        logger.error(f"❌ Enhanced Trend Analysis error: {e}")
+    
+    return state
+
+def enhanced_report_generation_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
+    """Enhanced report generation with comprehensive oversight"""
+    state["step"] = "generating_report"
+    state["current_agent"] = "report_generation"
+    
+    try:
+        start_time = datetime.now()
+        logger.info(f"📋 Starting Enhanced Report Generation...")
+        
+        # Prepare comprehensive input for report generation
+        trend_data = state.get("trend_result", "No trend analysis available")
+        collector_data = state.get("collector_result", "No data collected")
+        security_summary = state.get("security_assessment", {})
+        ethics_summary = state.get("ethics_assessment", {})
+        
+        # Enhanced report input with security and ethics context
+        report_input = {
+            "user_query": state["user_input"],
+            "trend_analysis": trend_data,
+            "collector_data": collector_data,
+            "security_summary": {
+                "status": security_summary.get("security_status", "Unknown"),
+                "risk_score": security_summary.get("risk_score", 0),
+                "recommendations": security_summary.get("recommendations", [])
+            },
+            "ethics_summary": {
+                "level": ethics_summary.get("ethics_level", "Unknown"),
+                "transparency_score": ethics_summary.get("transparency_score", 0),
+                "bias_count": ethics_summary.get("bias_count", 0),
+                "recommendations": ethics_summary.get("recommendations", [])
+            },
+            "session_metadata": {
+                "session_id": state["session_id"],
+                "workflow_type": state["workflow_type"],
+                "priority": state["priority"],
+                "compliance_status": state["compliance_status"]
+            }
+        }
+        
+        # Generate enhanced report
+        report_result = generate_summary_report(report_input)
+        execution_time = (datetime.now() - start_time).total_seconds()
+        
+        state["report_result"] = report_result
+        
+        state["agent_results"]["report_generation"] = AgentResult(
+            agent_name="report_generation",
+            status=AgentStatus.COMPLETED,
+            execution_time=execution_time,
+            output=report_result,
+            metadata={"enhanced_features": True}
+        )
+        
+        logger.info(f"✅ Enhanced Report Generation completed: {execution_time:.2f}s")
+        
+    except Exception as e:
+        state["error"] = f"Enhanced report generation failed: {str(e)}"
+        state["agent_results"]["report_generation"] = AgentResult(
+            agent_name="report_generation",
+            status=AgentStatus.FAILED,
+            execution_time=0,
+            output=None,
+            error=str(e)
+        )
+        logger.error(f"❌ Enhanced Report Generation error: {e}")
+    
+    return state
+
+def enhanced_output_compilation_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
+    """Enhanced output compilation with comprehensive summary"""
+    state["step"] = "compiling_output"
+    
+    try:
+        logger.info(f"📊 Starting Enhanced Output Compilation...")
+        
+        # Compile execution summary
+        total_execution_time = sum(
+            result.execution_time for result in state["agent_results"].values()
+        )
+        
+        successful_agents = [
+            name for name, result in state["agent_results"].items()
+            if result.status == AgentStatus.COMPLETED
+        ]
+        
+        failed_agents = [
+            name for name, result in state["agent_results"].items()
+            if result.status == AgentStatus.FAILED
+        ]
+        
+        # Determine final compliance status
+        if state["compliance_status"] == "pending":
+            if state.get("security_assessment", {}).get("security_status") == "ACCEPTABLE" and \
+               state.get("ethics_assessment", {}).get("ethics_level") in ["compliant", "minor_concern"]:
+                state["compliance_status"] = "compliant"
+            else:
+                state["compliance_status"] = "needs_review"
+        
+        # Create comprehensive execution summary
+        state["execution_summary"] = {
+            "session_id": state["session_id"],
+            "workflow_type": state["workflow_type"],
+            "priority": state["priority"],
+            "total_execution_time": total_execution_time,
+            "agents_executed": list(state["agent_results"].keys()),
+            "successful_agents": successful_agents,
+            "failed_agents": failed_agents,
+            "security_status": state.get("security_assessment", {}).get("security_status", "Unknown"),
+            "ethics_status": state.get("ethics_assessment", {}).get("ethics_level", "Unknown"),
+            "compliance_status": state["compliance_status"],
+            "warnings": state.get("warnings", []),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Generate final output based on workflow type
+        if state["workflow_type"] == "data_view":
+            state["final_output"] = f"""
+🔍 **Data Collection Results**
+Session: {state['session_id']}
+Security Status: {state.get('security_assessment', {}).get('security_status', 'Unknown')}
+
+{state.get('collector_result', 'No data collected')}
+
+---
+Execution Summary: {len(successful_agents)} agents completed successfully in {total_execution_time:.2f}s
+"""
+        
+        elif state["workflow_type"] in ["collect_analyze", "analyze_trends"]:
+            state["final_output"] = f"""
+📊 **Weather Analysis Results**
+Session: {state['session_id']}
+Security Status: {state.get('security_assessment', {}).get('security_status', 'Unknown')}
+Ethics Status: {state.get('ethics_assessment', {}).get('ethics_level', 'Unknown')}
+
+**Data Collection:**
+{state.get('collector_result', 'No data collected')[:300]}...
+
+**Trend Analysis:**
+{state.get('trend_result', 'No trend analysis')[:300]}...
+
+**Compliance Summary:**
+- Security Validated: {state.get('security_assessment', {}).get('security_status') != 'HIGH_RISK'}
+- Ethics Reviewed: {state.get('ethics_assessment', {}).get('ethics_level') not in ['critical_violation']}
+- Overall Status: {state['compliance_status']}
+
+---
+Execution Summary: {len(successful_agents)} agents completed successfully in {total_execution_time:.2f}s
+"""
+        
+        elif state["workflow_type"] == "generate_report":
+            state["final_output"] = f"""
+📋 **Comprehensive Weather Report**
+Session: {state['session_id']}
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+**Report Content:**
+{state.get('report_result', 'No report generated')}
+
+**Quality Assurance:**
+- Security Validated: ✅ {state.get('security_assessment', {}).get('security_status', 'Unknown')}
+- Ethics Reviewed: ✅ {state.get('ethics_assessment', {}).get('ethics_level', 'Unknown')}
+- Compliance Status: {state['compliance_status']}
+
+**Execution Metrics:**
+- Total Time: {total_execution_time:.2f}s
+- Agents Used: {', '.join(successful_agents)}
+- Warnings: {len(state.get('warnings', []))}
+
+---
+Generated by Enhanced Multi-Agent Weather Analysis System
+"""
+        
+        else:
+            # Fallback comprehensive output
+            state["final_output"] = f"""
+🤖 **Multi-Agent Analysis Complete**
+Session: {state['session_id']}
+
+**Results Summary:**
+- Data Collection: {'✅' if 'collector' in successful_agents else '❌'}
+- Trend Analysis: {'✅' if 'trend_analysis' in successful_agents else '❌'}
+- Report Generation: {'✅' if 'report_generation' in successful_agents else '❌'}
+
+**Compliance Status:** {state['compliance_status']}
+**Security Status:** {state.get('security_assessment', {}).get('security_status', 'Unknown')}
+**Ethics Status:** {state.get('ethics_assessment', {}).get('ethics_level', 'Unknown')}
+
+**Warnings:** {len(state.get('warnings', []))} issues detected
+{chr(10).join(f"⚠️ {warning}" for warning in state.get('warnings', [])[:3])}
+
+---
+Enhanced execution completed in {total_execution_time:.2f}s
+"""
+        
+        logger.info(f"✅ Enhanced Output Compilation completed")
+        logger.info(f"🎯 Final compliance status: {state['compliance_status']}")
+        
+    except Exception as e:
+        state["error"] = f"Enhanced output compilation failed: {str(e)}"
+        logger.error(f"❌ Enhanced Output Compilation error: {e}")
+    
+    return state
+
+def enhanced_end_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
+    """Enhanced workflow finalization with audit logging"""
+    state["step"] = "completed"
+    
+    try:
+        # Log workflow completion for audit trail
+        audit_entry = {
+            "session_id": state["session_id"],
+            "user_input": state["user_input"],
+            "workflow_type": state["workflow_type"],
+            "execution_summary": state.get("execution_summary", {}),
+            "compliance_status": state["compliance_status"],
+            "completion_time": datetime.now().isoformat()
+        }
+        
+        logger.info(f"🏁 Enhanced workflow completed: {state['session_id']}")
+        logger.info(f"📋 Audit entry created for compliance tracking")
+        
+        # Store audit entry (implement database storage as needed)
+        # self.store_audit_entry(audit_entry)
+        
+    except Exception as e:
+        logger.error(f"❌ Enhanced workflow finalization error: {e}")
+    
+    return state
+
+# Enhanced routing functions
+def should_run_trend_analysis(state: EnhancedWorkflowState) -> str:
+    """Enhanced routing decision for trend analysis"""
+    workflow_type = state.get("workflow_type", "data_view")
+    security_status = state.get("security_assessment", {}).get("security_status", "ACCEPTABLE")
+    
+    # Skip trend analysis if security violation
+    if security_status == "HIGH_RISK":
+        logger.warning("⚠️ Skipping trend analysis due to security concerns")
+        return "enhanced_output_compilation"
+    
+    if workflow_type in ["collect_analyze", "analyze_trends", "generate_report"]:
+        return "enhanced_trend_analysis"
+    else:
+        return "enhanced_output_compilation"
+
+def should_run_report_generation(state: EnhancedWorkflowState) -> str:
+    """Enhanced routing decision for report generation"""
+    workflow_type = state.get("workflow_type", "")
+    ethics_status = state.get("ethics_assessment", {}).get("ethics_level", "compliant")
+    
+    # Skip report generation if critical ethics violation
+    if ethics_status == "critical_violation":
+        logger.warning("⚠️ Skipping report generation due to ethics concerns")
+        return "enhanced_output_compilation"
+    
+    if workflow_type == "generate_report":
+        return "enhanced_report_generation"
+    else:
+        return "enhanced_output_compilation"
+
+# Build Enhanced Multi-Agent Workflow
+enhanced_workflow = StateGraph(EnhancedWorkflowState)
+
+# Add enhanced nodes
+enhanced_workflow.add_node("enhanced_start", enhanced_start_node)
+enhanced_workflow.add_node("enhanced_collector", enhanced_collector_node)
+enhanced_workflow.add_node("enhanced_trend_analysis", enhanced_trend_analysis_node)
+enhanced_workflow.add_node("enhanced_report_generation", enhanced_report_generation_node)
+enhanced_workflow.add_node("enhanced_output_compilation", enhanced_output_compilation_node)
+enhanced_workflow.add_node("enhanced_end", enhanced_end_node)
+
+# Add enhanced edges with conditional routing
+enhanced_workflow.add_edge(START, "enhanced_start")
+enhanced_workflow.add_edge("enhanced_start", "enhanced_collector")
+enhanced_workflow.add_conditional_edges(
+    "enhanced_collector",
+    should_run_trend_analysis,
+    {
+        "enhanced_trend_analysis": "enhanced_trend_analysis",
+        "enhanced_output_compilation": "enhanced_output_compilation"
+    }
+)
+enhanced_workflow.add_conditional_edges(
+    "enhanced_trend_analysis",
+    should_run_report_generation,
+    {
+        "enhanced_report_generation": "enhanced_report_generation",
+        "enhanced_output_compilation": "enhanced_output_compilation"
+    }
+)
+enhanced_workflow.add_edge("enhanced_report_generation", "enhanced_output_compilation")
+enhanced_workflow.add_edge("enhanced_output_compilation", "enhanced_end")
+enhanced_workflow.add_edge("enhanced_end", END)
+
+# Compile enhanced workflow
+enhanced_app = enhanced_workflow.compile()
+
+def run_enhanced_orchestrator_workflow(user_input: str, user_context: Dict = None) -> Dict:
+    """
+    Run enhanced orchestrator workflow with security and responsible AI integration
+    
+    Args:
+        user_input: User's natural language query
+        user_context: Additional user context (user_id, permissions, etc.)
+        
+    Returns:
+        Dict: Comprehensive workflow results with security and ethics assessments
+    """
+    initial_state = EnhancedWorkflowState(
+        user_input=user_input,
+        workflow_type="",
+        priority="medium",
+        session_id="",
+        user_context=user_context or {},
+        agent_execution_plan=None,
+        agent_results=None,
+        current_agent=None,
+        collector_result=None,
+        trend_result=None,
+        report_result=None,
+        security_assessment=None,
+        ethics_assessment=None,
+        security_alerts=None,
+        compliance_status="pending",
+        final_output="",
+        execution_summary=None,
+        step="",
+        error=None,
+        warnings=None
+    )
+    
+    try:
+        result = enhanced_app.invoke(initial_state)
+        return result
+    except Exception as e:
+        return {
+            "user_input": user_input,
+            "error": f"Enhanced orchestrator failed: {str(e)}",
+            "final_output": f"❌ Enhanced workflow execution failed: {str(e)}",
+            "step": "error",
+            "compliance_status": "system_error",
+            "session_id": datetime.now().strftime("%Y%m%d_%H%M%S")
+        }
+
+# Test function
+if __name__ == "__main__":
+    print("🚀 Testing Enhanced Multi-Agent Orchestrator...")
+    
+    test_queries = [
+        "Show me weather data for Colombo last 7 days",
+        "Analyze temperature trends and generate comprehensive report",
+        "Get current weather patterns and forecast risks"
+    ]
+    
+    for i, query in enumerate(test_queries, 1):
+        print(f"\n{'='*50}")
+        print(f"🧪 Test {i}: {query}")
+        print(f"{'='*50}")
+        
+        result = run_enhanced_orchestrator_workflow(
+            query,
+            {"user_id": f"test_user_{i}", "role": "analyst"}
+        )
+        
+        print(f"📊 Session: {result.get('session_id')}")
+        print(f"🔒 Security: {result.get('security_assessment', {}).get('security_status', 'Unknown')}")
+        print(f"🤖 Ethics: {result.get('ethics_assessment', {}).get('ethics_level', 'Unknown')}")
+        print(f"✅ Status: {result.get('compliance_status')}")
+        print(f"📋 Output: {result.get('final_output', 'No output')[:200]}...")
+        
+        if result.get('warnings'):
+            print(f"⚠️ Warnings: {len(result['warnings'])}")
+    
+    print("\n✅ Enhanced orchestrator testing complete!")

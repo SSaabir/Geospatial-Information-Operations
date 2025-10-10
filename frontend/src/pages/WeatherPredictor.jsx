@@ -1,15 +1,46 @@
 import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import FeatureGate from '../components/FeatureGate';
+import { useForm } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+
+// Yup validation schema
+const schema = yup.object().shape({
+  datetime: yup
+    .string()
+    .required('Date is required')
+    .matches(/^(0?[1-9]|1[0-2])\/(0?[1-9]|[12][0-9]|3[01])\/\d{4}$/, 'Date must be in MM/DD/YYYY format'),
+  sunrise: yup
+    .string()
+    .required('Sunrise time is required')
+    .matches(/^([0]?[1-9]|1[0-2]):([0-5][0-9]):([0-5][0-9]) (AM|PM)$/, 'Sunrise must be in hh:mm:ss AM/PM format'),
+  sunset: yup
+    .string()
+    .required('Sunset time is required')
+    .matches(/^([0]?[1-9]|1[0-2]):([0-5][0-9]):([0-5][0-9]) (AM|PM)$/, 'Sunset must be in hh:mm:ss AM/PM format'),
+  humidity: yup
+    .number()
+    .typeError('Humidity must be a number')
+    .required('Humidity is required')
+    .min(0, 'Humidity cannot be less than 0')
+    .max(100, 'Humidity cannot be more than 100'),
+  sealevelpressure: yup
+    .number()
+    .typeError('Sea Level Pressure must be a number')
+    .required('Sea Level Pressure is required')
+    .min(900, 'Pressure too low')
+    .max(1100, 'Pressure too high'),
+  temp: yup
+    .number()
+    .typeError('Temperature must be a number')
+    .required('Temperature is required')
+    .min(-50, 'Temperature too low')
+    .max(60, 'Temperature too high')
+});
 
 const WeatherPredictor = () => {
-  const [formData, setFormData] = useState({
-    datetime: '',
-    sunrise: '',
-    sunset: '',
-    humidity: '',
-    sealevelpressure: '',
-    temp: ''
-  });
-  
+  const { tier } = useAuth();
   const [loading, setLoading] = useState(false);
   const [activeView, setActiveView] = useState('form');
   const [prediction, setPrediction] = useState(null);
@@ -17,59 +48,55 @@ const WeatherPredictor = () => {
   const [similarConditions, setSimilarConditions] = useState(null);
   const [error, setError] = useState('');
 
-  const handleInputChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  // react-hook-form
+  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      datetime: '',
+      sunrise: '',
+      sunset: '',
+      humidity: '',
+      sealevelpressure: '',
+      temp: ''
+    }
+  });
 
   const fillExample = () => {
-    setFormData({
+    const exampleData = {
       datetime: '3/15/2020',
       sunrise: '6:30:15 AM',
       sunset: '6:45:20 PM',
       humidity: '68',
       sealevelpressure: '1015.2',
       temp: '18.5'
-    });
+    };
+    reset(exampleData);
   };
 
-  const handlePredict = async () => {
-    if (!formData.datetime || !formData.sunrise || !formData.sunset || !formData.humidity || !formData.sealevelpressure || !formData.temp) {
-      setError('Please fill in all required fields');
-      return;
-    }
-    
+  const handlePredict = async (formData) => {
     setLoading(true);
     setError('');
-    
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const mockResult = {
-        prediction: 'Partly Cloudy',
-        confidence: 0.87,
-        groq_explanation: 'Based on the atmospheric conditions provided, the model predicts partly cloudy weather. The temperature of 18.5°C combined with 68% humidity and sea level pressure of 1015.2 hPa suggests stable atmospheric conditions with some cloud formation likely.',
-        dataset_stats: {
-          total_occurrences: 245,
-          percentage_of_dataset: 12.3,
-          avg_temp: 18.2,
-          avg_humidity: 67.5,
-          avg_pressure: 1014.8
+      const response = await fetch('http://localhost:8000/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
         },
-        processed_features: {
-          'Hour of Day': 15.5,
-          'Day of Year': 75,
-          'Pressure Normalized': 0.523,
-          'Humidity Normalized': 0.68,
-          'Temperature Normalized': 0.412,
-          'Daylight Hours': 12.25
-        }
-      };
-      
-      setPrediction(mockResult);
-      setActiveView('result');
+        body: JSON.stringify(formData)
+      });
+      const data = await response.json();
+      if (data.result) {
+        setPrediction({
+          prediction: data.result.replace('Predicted Weather Condition: ', ''),
+          confidence: null,
+          groq_explanation: '',
+          dataset_stats: {},
+          processed_features: {}
+        });
+        setActiveView('result');
+      } else {
+        setError(data.error || 'Failed to get prediction. Please try again.');
+      }
     } catch (err) {
       setError('Failed to get prediction. Please try again.');
     } finally {
@@ -83,7 +110,6 @@ const WeatherPredictor = () => {
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
       const mockInfo = {
         total_records: 1987,
         date_range: { start: '1997-01-01', end: '2024-12-31' },
@@ -102,7 +128,6 @@ const WeatherPredictor = () => {
           pressure: { min: 985.3, max: 1045.7, mean: 1013.8 }
         }
       };
-      
       setDatasetInfo(mockInfo);
       setActiveView('dataset');
     } catch (err) {
@@ -112,7 +137,7 @@ const WeatherPredictor = () => {
     }
   };
 
-  const findSimilar = async () => {
+  const findSimilar = async (formData) => {
     if (!formData.temp || !formData.humidity || !formData.sealevelpressure) {
       setError('Please fill in temperature, humidity, and pressure to find similar conditions');
       return;
@@ -123,7 +148,6 @@ const WeatherPredictor = () => {
     
     try {
       await new Promise(resolve => setTimeout(resolve, 1800));
-      
       const mockSimilar = {
         found_similar: 23,
         most_common_conditions: {
@@ -137,7 +161,6 @@ const WeatherPredictor = () => {
           { datetime: '2021-05-08', conditions: 'Partly Cloudy', temp: 18.1, humidity: 67.8, sealevelpressure: 1015.4 }
         ]
       };
-      
       setSimilarConditions(mockSimilar);
       setActiveView('similar');
     } catch (err) {
@@ -261,23 +284,27 @@ const WeatherPredictor = () => {
               🔮 Predict Weather
             </button>
             
-            <button
-              type="button"
-              onClick={loadDatasetInfo}
-              className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
-            >
-              📊 Dataset Info
-            </button>
+            <FeatureGate minTier="researcher" fallback={<button disabled className="px-8 py-4 rounded-lg font-semibold text-gray-400 border-2 text-lg min-w-52" style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}>📊 Dataset Info (Locked)</button>}>
+              <button
+                type="button"
+                onClick={loadDatasetInfo}
+                className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
+                style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              >
+                📊 Dataset Info
+              </button>
+            </FeatureGate>
             
-            <button
-              type="button"
-              onClick={findSimilar}
-              className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
-            >
-              🔍 Find Similar
-            </button>
+            <FeatureGate minTier="professional" fallback={<button disabled className="px-8 py-4 rounded-lg font-semibold text-gray-400 border-2 text-lg min-w-52" style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}>🔍 Find Similar (Locked)</button>}>
+              <button
+                type="button"
+                onClick={findSimilar}
+                className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
+                style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              >
+                🔍 Find Similar
+              </button>
+            </FeatureGate>
             
             <button
               type="button"
@@ -473,4 +500,4 @@ const WeatherPredictor = () => {
   );
 };
 
-export default WeatherPredictor;
+export default WeatherPredictor;  

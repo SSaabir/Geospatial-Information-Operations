@@ -8,14 +8,15 @@ The **Geospatial Information Operations** project is a comprehensive platform th
 
 ### 🎯 Key Features
 
+- **🔐 JWT Authentication System**: Complete token-based authentication with access/refresh tokens, password hashing, and protected routes
 - **🤖 AI-Powered Weather Analysis**: Multi-agent system using LangGraph for intelligent data collection and analysis
-- **📊 Interactive Dashboards**: Real-time visualization of weather patterns, trends, and predictions
+- **📊 Interactive Dashboards**: Real-time visualization of weather patterns, trends, and predictions with protected access
 - **🌡️ Weather Prediction**: Machine learning models for temperature, humidity, and weather forecasting
 - **💬 Intelligent Chat Interface**: Natural language queries for weather data and insights
-- **🗄️ Database Integration**: PostgreSQL with geospatial capabilities for historical weather data
-- **🔐 User Authentication**: Secure login system with role-based access control
+- **🗄️ Database Integration**: PostgreSQL with geospatial capabilities and user management
+- **� Role-Based Access Control**: Admin dashboard with user management and secure authentication
 - **📈 Trend Analysis**: Historical data analysis and future trend predictions
-- **🌐 RESTful API**: FastAPI backend for seamless data exchange
+- **🌐 RESTful API**: FastAPI backend with JWT-secured endpoints
 
 ### 🏗️ Architecture
 
@@ -57,12 +58,13 @@ The backend employs a sophisticated multi-agent architecture:
 - **Lucide React** - Beautiful icons
 
 ### Backend
-- **FastAPI 0.104** - High-performance web framework
+- **FastAPI 0.104** - High-performance web framework with JWT authentication
 - **Python 3.10+** - Core programming language
+- **JWT Authentication** - Token-based security with bcrypt password hashing
+- **PostgreSQL** - Primary database with user management and geospatial support
+- **SQLAlchemy 2.0** - Database ORM with user models
 - **LangGraph** - Multi-agent workflow orchestration
 - **LangChain** - AI/LLM integration framework
-- **SQLAlchemy 2.0** - Database ORM
-- **PostgreSQL** - Primary database with geospatial support
 - **Groq API** - Language model integration
 
 ### Data Science & ML
@@ -80,6 +82,35 @@ The backend employs a sophisticated multi-agent architecture:
 ---
 
 ## 🚀 Quick Start Guide
+
+### 🎯 For Team Members (Automated Setup)
+
+**Windows PowerShell (Run as Administrator):**
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+.\setup_team_environment.ps1
+```
+
+**Linux/Mac Terminal:**
+```bash
+chmod +x setup_team_environment.sh
+./setup_team_environment.sh
+```
+
+✅ **This will automatically:**
+- Create Python virtual environment
+- Install all dependencies
+- Initialize database with admin user
+- Configure environment variables
+- Test the complete system
+
+📋 **Default Login:** `admin` / `password123`  
+🌐 **Frontend:** http://localhost:5173  
+⚡ **Backend API:** http://localhost:8000
+
+---
+
+### 🔧 Manual Setup (Advanced)
 
 ### Prerequisites
 - **Python 3.10+**
@@ -261,13 +292,19 @@ flake8 .                    # Lint code
 
 ### API Endpoints
 
-Key API endpoints available:
+#### Authentication Endpoints
+- `POST /auth/login` - User login with JWT token response
+- `POST /auth/refresh` - Refresh JWT access token
+- `POST /auth/logout` - Logout and invalidate token
+- `GET /protected` - Test protected route access
 
-- `GET /api/weather/current` - Current weather data
-- `POST /api/weather/predict` - Weather predictions
-- `GET /api/weather/history` - Historical weather data
-- `POST /api/chat/query` - Chat with AI agents
-- `GET /api/dashboard/metrics` - Dashboard analytics
+#### Application Endpoints
+- `POST /orchestrator/preview` - Preview orchestrator workflow
+- `POST /orchestrator/execute` - Execute orchestrator tasks
+- `GET /health` - Health check endpoint
+- `POST /api/weather/predict` - Weather predictions (protected)
+- `GET /api/weather/history` - Historical weather data (protected)
+- `POST /api/chat/query` - Chat with AI agents (protected)
 
 ---
 

@@ -4,11 +4,12 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from typing import Optional
 from datetime import datetime
-import bcrypt
 
 Base = declarative_base()
 
+# ---------------------------
 # SQLAlchemy ORM Model
+# ---------------------------
 class UserDB(Base):
     """SQLAlchemy ORM model for users table"""
     __tablename__ = "users"
@@ -24,33 +25,28 @@ class UserDB(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     last_login = Column(DateTime(timezone=True), nullable=True)
     avatar_url = Column(Text, nullable=True)
-    
-    def verify_password(self, password: str) -> bool:
-        """Verify password against hash"""
-        return bcrypt.checkpw(password.encode('utf-8'), self.hashed_password.encode('utf-8'))
-    
-    @staticmethod
-    def hash_password(password: str) -> str:
-        """Hash password using bcrypt"""
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    tier = Column(String(20), default="free")  # free, researcher, professional
 
+# ---------------------------
 # Pydantic Models for API
+# ---------------------------
 class UserBase(BaseModel):
     """Base user model"""
     username: str = Field(..., min_length=3, max_length=50)
-    email: EmailStr
+    email: EmailStr  # ✅ Email validation
     full_name: Optional[str] = Field(None, max_length=100)
     is_active: bool = True
+    tier: str = Field("free", description="User tier: free, researcher, professional")
 
 class UserCreate(UserBase):
     """User creation model"""
     password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
+    tier: str = Field("free", description="User tier: free, researcher, professional")
 
 class UserLogin(BaseModel):
     """User login model"""
-    username: str
+    email: EmailStr  # ✅ Login via email
     password: str
 
 class UserResponse(UserBase):
@@ -60,15 +56,18 @@ class UserResponse(UserBase):
     created_at: datetime
     last_login: Optional[datetime]
     avatar_url: Optional[str]
+    tier: str
     
     class Config:
         from_attributes = True
 
 class UserUpdate(BaseModel):
-    """User update model"""
+    """User update model (Edit Profile)"""
     full_name: Optional[str] = Field(None, max_length=100)
-    email: Optional[EmailStr] = None
+    email: Optional[EmailStr] = None  # ✅ Validate updated email
     avatar_url: Optional[str] = None
+    # Added tier here so frontend can send a new tier if needed
+    tier: Optional[str] = Field(None, description="User tier: free, researcher, professional")
 
 class ChangePassword(BaseModel):
     """Change password model"""
@@ -76,7 +75,9 @@ class ChangePassword(BaseModel):
     new_password: str = Field(..., min_length=8)
     confirm_password: str = Field(..., min_length=8)
 
+# ---------------------------
 # Token Models
+# ---------------------------
 class Token(BaseModel):
     """JWT token response model"""
     access_token: str

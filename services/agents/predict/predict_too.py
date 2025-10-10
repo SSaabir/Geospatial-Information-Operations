@@ -4,9 +4,12 @@ import numpy as np
 from datetime import datetime
 
 # 1. Load Trained Artifacts
-model = joblib.load("climate_condition_model.pkl")
-label_encoder = joblib.load("label_encoder.pkl")
-imputer = joblib.load("feature_imputer.pkl")
+MODEL_PATH = r"C:\Users\abdul\OneDrive\Desktop\auto2\FDM_NEW\IRWA\Geospatial-Information-Operations\climate_condition_model.pkl"
+LABEL_ENCODER_PATH = r"C:\Users\abdul\OneDrive\Desktop\auto2\FDM_NEW\IRWA\Geospatial-Information-Operations\label_encoder.pkl"
+IMPUTER_PATH = r"C:\Users\abdul\OneDrive\Desktop\auto2\FDM_NEW\IRWA\Geospatial-Information-Operations\feature_imputer.pkl"
+model = joblib.load(MODEL_PATH)
+label_encoder = joblib.load(LABEL_ENCODER_PATH)
+imputer = joblib.load(IMPUTER_PATH)
 
 feature_cols = [
     "doy_sin", "doy_cos",
