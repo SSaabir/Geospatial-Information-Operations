@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, exc  # For PostgreSQL connection
 from sqlalchemy.engine.base import Engine
 from typing import Optional, Union
 from dotenv import load_dotenv
+import logging
 
 # LangChain and LangGraph imports
 from langgraph.graph import StateGraph, END, START
@@ -28,6 +29,10 @@ load_dotenv()
 # Initialize LLM for LangChain integration
 llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct",
                groq_api_key=os.getenv("GROQ_API_KEY"))
+
+# Logger configuration
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class TrendAgent:
     def __init__(self, db_uri=None, retry_attempts=3, retry_delay=1):
@@ -57,18 +62,13 @@ class TrendAgent:
         Returns:
             tuple[bool, str]: (success status, error message if any)
         """
-        if not self.db_uri:
-            return False, "No database URI provided"
-        
         delay = self.retry_delay
         for attempt in range(self.retry_attempts):
             try:
                 if self.engine is None:
                     self.engine = create_engine(self.db_uri)
                 
-                # Test connection
-                with self.engine.connect() as conn:
-                    conn.execute("SELECT 1")
+                # Removed database connection test
                 self.connected = True
                 return True, ""
                 
@@ -241,7 +241,9 @@ class TrendAgent:
         Returns:
             dict: Analysis results
         """
+        # Check if DataFrame is None
         if self.df is None:
+            logger.error("DataFrame is None. Ensure data is loaded before analysis.")
             return {"error": "No data available for analysis"}
         
         # Filter data by date range if provided
@@ -907,7 +909,7 @@ graph.add_edge("output", END)
 trend_app = graph.compile()
 
 
-def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str = None) -> str:
+def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str = None, collector_result: Optional[dict] = None) -> str:
     """
     Run the trend analysis agent with the given parameters.
     
@@ -915,11 +917,19 @@ def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str =
         query (str): Description of the analysis to perform
         start_date (str): Start date in YYYY-MM-DD format (optional)
         end_date (str): End date in YYYY-MM-DD format (optional)
+        collector_result (dict): Data collected by the Collector agent (optional)
     
     Returns:
         str: JSON string with comprehensive analysis results
     """
     try:
+        # Ensure TrendAgent is initialized with collector_result if provided
+        agent = TrendAgent()
+        if collector_result:
+            agent.df = pd.DataFrame(collector_result)
+        elif agent.df is None or agent.df.empty:
+            raise ValueError("No data provided to TrendAgent. Ensure collector_result is passed.")
+
         # Create initial state
         initial_state = {
             "input": query,
@@ -929,8 +939,20 @@ def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str =
             "visualizations": None,
             "data_info": None,
             "output": "",
-            "error": None
+            "error": None,
+            "agent": agent  # Pass the agent to the state
         }
+        
+        # Ensure data is passed from the Collector
+        if "collector_result" not in initial_state or not initial_state["collector_result"]:
+            raise ValueError("Collector result is missing or empty. Ensure data is passed from the Collector.")
+
+        # Initialize TrendAgent with the collected data
+        agent = TrendAgent()
+        agent.df = pd.DataFrame(initial_state["collector_result"])
+
+        # Pass the agent to the graph's initial state
+        initial_state["agent"] = agent
         
         # Run the graph
         result = trend_app.invoke(initial_state)

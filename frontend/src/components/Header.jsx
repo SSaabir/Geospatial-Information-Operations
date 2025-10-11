@@ -22,8 +22,6 @@ export default function Header() {
     { name: 'Security', href: '/security', icon: Shield },
     { name: 'AI Ethics', href: '/ai-ethics', icon: Brain },
     { name: 'Chat Assistant', href: '/chat', icon: Bot },
-    { name: 'Pricing', href: '/pricing', icon: Cloud },
-    { name: 'Marketplace', href: '/marketplace', icon: Cloud },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   ];
 

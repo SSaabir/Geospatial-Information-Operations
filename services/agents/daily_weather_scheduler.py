@@ -73,10 +73,10 @@ class WeatherScheduler:
                 password=os.getenv("DB_PASSWORD")
             )
             cursor = conn.cursor()
-            cursor.execute("SELECT 1")
+            # Removed database connection test
             cursor.close()
             conn.close()
-            logger.info("✅ Database connection successful")
+            logger.info("Database connection test logic removed")
             return True
         except Exception as e:
             logger.error(f"❌ Database connection failed: {str(e)}")

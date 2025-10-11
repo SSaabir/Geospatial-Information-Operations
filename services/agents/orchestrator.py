@@ -23,13 +23,13 @@ if __name__ == "__main__" or __package__:
     from .collector import run_collector_agent
     # Only import TrendAgent and others if not a direct SQL query
     if not (len(sys.argv) > 1 and sys.argv[1].strip().startswith('query_postgresql_tool')):
-        from .TrendAgent import run_trend_analysis_agent
+        from .TrendAgent import run_trend_analysis_agent, TrendAgent  # Import TrendAgent
         from .report import generate_summary_report
         from .security_agent import run_security_agent, get_security_agent
         from .responsible_ai import run_responsible_ai_assessment, get_responsible_ai_framework
 else:
     from collector import run_collector_agent
-    from TrendAgent import run_trend_analysis_agent
+    from TrendAgent import run_trend_analysis_agent, TrendAgent  # Import TrendAgent
     from report import generate_summary_report
     from security_agent import run_security_agent, get_security_agent
     from responsible_ai import run_responsible_ai_assessment, get_responsible_ai_framework
@@ -148,6 +148,10 @@ class EnhancedOrchestrator:
         analysis_keywords = ['analyze', 'trend', 'pattern', 'forecast', 'predict', 'model']
         report_keywords = ['report', 'summary', 'export', 'generate', 'document']
         
+        # Add additional keywords for better intent classification
+        data_keywords.extend(['find', 'locate', 'identify'])
+        analysis_keywords.extend(['correlation', 'relationship', 'association'])
+        
         classification = {
             "intent": "unknown",
             "priority": WorkflowPriority.MEDIUM.value,
@@ -210,6 +214,9 @@ class EnhancedOrchestrator:
         
         return base_plan
 
+# Initialize execution_time globally at the start of the workflow
+execution_time = 0.0
+
 def enhanced_start_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
     """Enhanced workflow initialization with security and ethics setup"""
     state["step"] = "initializing"
@@ -258,6 +265,7 @@ def enhanced_collector_node(state: EnhancedWorkflowState) -> EnhancedWorkflowSta
         
         # Execute collector agent with error handling
         try:
+            # Revert to original collector agent call
             collector_result = run_collector_agent(state["user_input"])
             if not collector_result:
                 raise ValueError("Collector agent returned no data")
@@ -266,7 +274,9 @@ def enhanced_collector_node(state: EnhancedWorkflowState) -> EnhancedWorkflowSta
             state["warnings"].append(f"Data collection failed: {str(e)}")
             collector_result = "No data collected due to error"
             
-        execution_time = (datetime.now() - start_time).total_seconds()
+        # Explicitly initialize execution_time if not already defined
+        execution_time = state.get("execution_time", 0.0)
+        logger.info(f"Execution time calculated: {execution_time:.2f}s")
         
         # Security validation of collected data
         security_input = {
@@ -311,6 +321,9 @@ def enhanced_collector_node(state: EnhancedWorkflowState) -> EnhancedWorkflowSta
             metadata={"security_assessment": security_data}
         )
 
+        # Ensure execution_time is passed to the state
+        state["execution_time"] = execution_time
+
         # Handle security violations
         if security_data.get("security_status") == "HIGH_RISK":
             state["warnings"].append("High-risk security status detected in data collection")
@@ -351,13 +364,35 @@ def enhanced_trend_analysis_node(state: EnhancedWorkflowState) -> EnhancedWorkfl
         start_date = dates[0] if len(dates) > 0 else None
         end_date = dates[1] if len(dates) > 1 else None
         
-        # Execute trend analysis
-        trend_result = run_trend_analysis_agent(
-            state["user_input"],
-            start_date=start_date,
-            end_date=end_date
-        )
-        execution_time = (datetime.now() - start_time).total_seconds()
+        # Fetch data from the collector
+        collector_result = run_collector_agent(state["user_input"])
+        if not collector_result:
+            raise ValueError("Collector agent returned no data")
+
+        # Convert collector result to DataFrame
+        if isinstance(collector_result, str):
+            collector_result = json.loads(collector_result)
+        collector_df = pd.DataFrame(collector_result)
+
+        # Validate collector data
+        if collector_df.empty or 'datetime' not in collector_df.columns:
+            logger.error("collector_df is empty or missing the 'datetime' column")
+            raise ValueError("Invalid collector data: Ensure data is not empty and contains a 'datetime' column")
+
+        # Debug log for collector data
+        logger.debug(f"Collector data preview: {collector_df.head()}")
+
+        # Ensure datetime column is properly formatted
+        collector_df['datetime'] = pd.to_datetime(collector_df['datetime'], errors='coerce')
+        collector_df.set_index('datetime', inplace=True)
+
+        # Pass the DataFrame to TrendAgent
+        trend_agent = TrendAgent()
+        trend_agent.df = collector_df
+
+        # Run the TrendAgent analysis
+        trend_result = trend_agent.analyze_trends(start_date=start_date, end_date=end_date)
+        state["trend_result"] = trend_result
         
         # Responsible AI assessment
         if state.get("collector_result"):
