@@ -19,7 +19,7 @@ from security.jwt_handler import (
 from security.auth_middleware import get_current_user, get_optional_user, security
 from db_config import DatabaseConfig
 from middleware.event_logger import log_auth_event, increment_usage_metrics
-from services.utils.notification_manager import notify
+from utils.notification_manager import notify
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -181,10 +181,7 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
 @auth_router.post("/login", response_model=Dict[str, Any])
 async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
-        user = db.query(UserDB).filter(
-            (UserDB.username == user_credentials.username) | 
-            (UserDB.email == user_credentials.username)
-        ).first()
+        user = db.query(UserDB).filter(UserDB.email == user_credentials.email).first()
 
         if not user:
             # Notify about failed login attempt (unknown user) and return
@@ -192,9 +189,9 @@ async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTa
                 background_tasks.add_task(
                     notify,
                     subject="Failed login attempt - unknown user",
-                    message=f"Login attempt for unknown user identifier: {user_credentials.username}",
+                    message=f"Login attempt for unknown email: {user_credentials.email}",
                     level="warning",
-                    metadata={"username": user_credentials.username}
+                    metadata={"email": user_credentials.email}
                 )
             except Exception:
                 logger.exception("Non-fatal: failed to enqueue failed-login notification")
@@ -212,9 +209,9 @@ async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTa
                 background_tasks.add_task(
                     notify,
                     subject="Failed login attempt - invalid password",
-                    message=f"Invalid password for user {user.username} (id={user.id}) from request identifier: {user_credentials.username}",
+                    message=f"Invalid password for user {user.username} (id={user.id}) with email: {user_credentials.email}",
                     level="warning",
-                    metadata={"user_id": user.id, "username": user.username}
+                    metadata={"user_id": user.id, "email": user_credentials.email}
                 )
             except Exception:
                 logger.exception("Non-fatal: failed to enqueue failed-login notification")
@@ -262,27 +259,56 @@ async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTa
 async def logout_user(current_user: UserDB = Depends(get_current_user), credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials
-        if hasattr(jwt_handler, 'blacklist_token'):
-            jwt_handler.blacklist_token(token)
-        logger.info(f"User logged out: {current_user.username}")
+        # Blacklist the current access token
+        blacklist_success = jwt_handler.blacklist_token(token)
+        
+        # Update last_logout timestamp if the field exists
+        try:
+            db = next(get_db())
+            if hasattr(current_user, 'last_logout'):
+                current_user.last_logout = datetime.now(timezone.utc)
+                db.commit()
+        except Exception as e:
+            logger.warning(f"Failed to update last_logout timestamp: {e}")
+        
+        logger.info(f"User session ended: {current_user.username} (Token blacklisted: {blacklist_success})")
+        
+        # Log the logout event
         try:
             log_auth_event("logout", current_user.id, True)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during logout: %s", e)
-        # Best-effort notification about logout
+        
+        # Send notification about logout (best-effort)
         try:
             notify(
-                subject="User logged out",
-                message=f"User {current_user.username} (id={current_user.id}) logged out.",
+                subject="User session ended",
+                message=f"User {current_user.username} (id={current_user.id}) ended their session.",
                 level="info",
-                metadata={"user_id": current_user.id, "username": current_user.username}
+                metadata={
+                    "user_id": current_user.id,
+                    "username": current_user.username,
+                    "token_blacklisted": blacklist_success
+                }
             )
         except Exception:
             logger.exception("Non-fatal: failed to send logout notification")
-        return {"message": "Successfully logged out"}
+        
+        return {
+            "message": "Successfully signed out",
+            "details": {
+                "token_blacklisted": blacklist_success,
+                "data_preserved": True,
+                "session_ended": True
+            }
+        }
+        
     except Exception as e:
         logger.error(f"Logout error: {e}")
-        raise HTTPException(status_code=500, detail="Logout failed")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to sign out properly"
+        )
 
 @auth_router.post("/refresh", response_model=Token)
 async def refresh_token(refresh_data: RefreshToken):

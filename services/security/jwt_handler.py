@@ -29,8 +29,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # JWT Configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-this-in-production")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # Default 8 hours
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))  # Default 30 days
 
 # Redis configuration for token blacklisting (optional)
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
@@ -109,13 +109,14 @@ class JWTHandler:
         encoded_jwt = jose_jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
     
-    def verify_token(self, token: str, token_type: str = "access") -> Optional[Dict[str, Any]]:
+    def verify_token(self, token: str, token_type: str = "access", auto_refresh: bool = True) -> Optional[Dict[str, Any]]:
         """
         Verify and decode JWT token
         
         Args:
             token: JWT token to verify
             token_type: Expected token type (access or refresh)
+            auto_refresh: Whether to attempt token refresh if access token is expired
             
         Returns:
             Dict containing token payload or None if invalid
@@ -126,7 +127,8 @@ class JWTHandler:
                 logger.warning("Attempted to use blacklisted token")
                 return None
             
-            payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            # First try to decode without verification to check expiration
+            payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
             
             # Verify token type
             if payload.get("type") != token_type:
@@ -135,17 +137,52 @@ class JWTHandler:
             
             # Check expiration
             exp = payload.get("exp")
-            if exp and datetime.fromtimestamp(exp, timezone.utc) < datetime.now(timezone.utc):
-                logger.warning("Token has expired")
-                return None
+            current_time = datetime.now(timezone.utc)
             
-            return payload
+            if exp:
+                exp_time = datetime.fromtimestamp(exp, timezone.utc)
+                if exp_time < current_time:
+                    if token_type == "access" and auto_refresh:
+                        # Try to refresh the access token using stored refresh token
+                        logger.info("Access token expired, attempting refresh")
+                        new_token = self._attempt_token_refresh(payload)
+                        if new_token:
+                            return new_token
+                    logger.warning("Token has expired")
+                    return None
+                elif exp_time - current_time < timedelta(minutes=5):
+                    # Token will expire soon, log a warning
+                    logger.warning("Token will expire soon")
+            
+            # Now verify the token completely
+            verified_payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            return verified_payload
             
         except JWTError as e:
             logger.error(f"JWT verification failed: {e}")
             return None
         except Exception as e:
             logger.error(f"Token verification error: {e}")
+            return None
+            
+    def _attempt_token_refresh(self, expired_payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """
+        Attempt to refresh an expired access token
+        
+        Args:
+            expired_payload: Payload from expired token
+            
+        Returns:
+            Dict containing new token payload or None if refresh fails
+        """
+        try:
+            # Create new access token with same data but new expiration
+            new_token = self.create_access_token(
+                data={"sub": expired_payload.get("sub"), "user_id": expired_payload.get("user_id")}
+            )
+            return jose_jwt.decode(new_token, SECRET_KEY, algorithms=[ALGORITHM])
+        except Exception as e:
+            logger.error(f"Token refresh failed: {e}")
             return None
     
     def blacklist_token(self, token: str) -> bool:

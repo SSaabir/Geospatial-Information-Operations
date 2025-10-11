@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 import logging
 import os
 from dotenv import load_dotenv
-
+import time
+import sqlalchemy.exc
+from middleware.event_logger import log_api_access
 # Import modules
 from models.user import Base, UserDB
 from api.auth import auth_router
@@ -67,6 +69,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Set up global error handlers
+from middleware.error_handlers import setup_error_handlers
+setup_error_handlers(app)
+
 # CORS Configuration
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173").split(",")
 
@@ -96,27 +102,78 @@ app.include_router(billing_router)
 
 # Custom exception handlers
 @app.exception_handler(AuthenticationError)
-async def authentication_exception_handler(request, exc: AuthenticationError):
+async def authentication_exception_handler(request: Request, exc: AuthenticationError):
     """Handle authentication errors"""
+    logger.error(f"Authentication error: {exc.message} - Request: {request.method} {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.message}
+        content={
+            "detail": exc.message,
+            "type": "authentication_error",
+            "path": request.url.path,
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
     )
 
 @app.exception_handler(AuthorizationError)
-async def authorization_exception_handler(request, exc: AuthorizationError):
+async def authorization_exception_handler(request: Request, exc: AuthorizationError):
     """Handle authorization errors"""
+    logger.error(f"Authorization error: {exc.message} - Request: {request.method} {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.message}
+        content={
+            "detail": exc.message,
+            "type": "authorization_error",
+            "path": request.url.path,
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
     )
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc: HTTPException):
+async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions"""
+    logger.error(f"HTTP error {exc.status_code}: {exc.detail} - Request: {request.method} {request.url.path}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail}
+        content={
+            "detail": exc.detail,
+            "type": "http_error",
+            "path": request.url.path,
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+    )
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle all unhandled exceptions"""
+    error_id = time.strftime('%Y%m%d%H%M%S')
+    logger.exception(f"Unhandled error {error_id}: {str(exc)} - Request: {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "An unexpected error occurred",
+            "type": "internal_server_error",
+            "error_id": error_id,
+            "path": request.url.path,
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+    )
+
+# Database related exception handlers
+@app.exception_handler(sqlalchemy.exc.SQLAlchemyError)
+async def sqlalchemy_exception_handler(request: Request, exc: sqlalchemy.exc.SQLAlchemyError):
+    """Handle database related errors"""
+    error_id = time.strftime('%Y%m%d%H%M%S')
+    logger.error(f"Database error {error_id}: {str(exc)} - Request: {request.method} {request.url.path}")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={
+            "detail": "A database error occurred",
+            "type": "database_error",
+            "error_id": error_id,
+            "path": request.url.path,
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
     )
 
 # Health check endpoint
@@ -173,14 +230,23 @@ async def request_event_logger(request: Request, call_next):
                         logger.debug("Failed to parse user_id from token payload: %s", e)
                         user_id = None
 
+            # Get request size from content-length header or default to 0
+            request_size = int(request.headers.get('content-length', 0))
+            # For now, we'll set a default threat score of 0
+            # In production, you would want to calculate this based on security rules
+            threat_score = 0.0
+            
             log_api_access(
                 endpoint=str(request.url.path),
                 method=request.method,
                 user_id=user_id,
                 ip_address=request.client.host if request.client else None,
-                user_agent=request.headers.get('user-agent'),
+                user_agent=request.headers.get('user-agent', ''),
                 response_code=status_code,
                 response_time=duration,
+                request_size=request_size,
+                response_size=0,  # We can't get response size easily in middleware
+                threat_score=threat_score
             )
         except Exception:
             # Log failures in the logging/auditing path so we can detect them

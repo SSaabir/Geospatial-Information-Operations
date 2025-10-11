@@ -46,8 +46,8 @@ class UserCreate(UserBase):
 
 class UserLogin(BaseModel):
     """User login model"""
-    email: EmailStr  # ✅ Login via email
-    password: str
+    email: EmailStr = Field(..., description="User's email address")
+    password: str = Field(..., min_length=6)  # Match frontend validation
 
 class UserResponse(UserBase):
     """User response model (without sensitive data)"""

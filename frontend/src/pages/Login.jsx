@@ -4,6 +4,7 @@ import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Sparkles, Shield } from 'luc
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import { useAuth } from '../contexts/AuthContext';
 
 // ✅ Validation Schema
 const loginSchema = yup.object().shape({
@@ -39,29 +40,23 @@ export default function Login() {
     mode: "onChange", // ✅ real-time validation
   });
 
+  const { login } = useAuth();
+  
   const onSubmit = async (formData) => {
-    setError('');
-    setIsLoading(true);
-
     if (isLogin) {
       // LOGIN
       try {
-        const res = await fetch('http://localhost:8000/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: formData.email, password: formData.password })
-        });
-        const data = await res.json();
-        setIsLoading(false);
-
-        if (!res.ok) {
-          setError(data.detail || 'Login failed');
-        } else {
-          navigate('/home');
+        setError('');
+        setIsLoading(true);
+        const user = await login(formData.email, formData.password);
+        if (!user) {
+          throw new Error('Login failed - no user data received');
         }
+        navigate('/dashboard');
       } catch (err) {
+        setError(err.message || 'Login failed. Please check your credentials and try again.');
+      } finally {
         setIsLoading(false);
-        setError(err.message);
       }
     } else {
       // SIGNUP

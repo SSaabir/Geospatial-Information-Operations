@@ -14,7 +14,7 @@ from db_config import DatabaseConfig
 from models.user import Base, UserDB
 from security.auth_middleware import get_current_user
 from middleware.event_logger import log_auth_event, increment_usage_metrics
-from services.utils.notification_manager import notify
+from utils.notification_manager import notify
 
 logger = logging.getLogger(__name__)
 

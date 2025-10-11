@@ -126,14 +126,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     try {
       setIsLoading(true);
       
       const response = await apiCall('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
+
+      if (!response.access_token || !response.user) {
+        throw new Error('Invalid response from server');
+      }
 
       // Store tokens and user data
       setAccessToken(response.access_token);
@@ -144,15 +148,11 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('refresh_token', response.refresh_token);
       localStorage.setItem('user', JSON.stringify(response.user));
 
-      return { success: true };
+      return response.user;
     } catch (error) {
       console.error('Login error:', error);
-      return { 
-        success: false, 
-        error: error.message || 'Login failed. Please try again.' 
-      };
-    } finally {
       setIsLoading(false);
+      throw new Error(error.message || 'Login failed. Please try again.');
     }
   };
 

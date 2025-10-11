@@ -18,16 +18,48 @@ security = HTTPBearer()
 db_config = DatabaseConfig()
 
 # Dependency functions for FastAPI
-async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> Dict[str, Any]:
-    """Verify JWT token dependency"""
+async def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request = None
+) -> Dict[str, Any]:
+    """
+    Verify JWT token dependency with auto-refresh capability
+    
+    Args:
+        credentials: HTTP Bearer credentials
+        request: FastAPI request object for setting refresh header
+        
+    Returns:
+        Dict[str, Any]: Token payload
+        
+    Raises:
+        HTTPException: If token is invalid or expired
+    """
     token = credentials.credentials
     
-    # Verify token
-    payload = jwt_handler.verify_token(token, "access")
+    # Verify token with auto-refresh enabled
+    payload = jwt_handler.verify_token(token, "access", auto_refresh=True)
     if payload is None:
+        # Try to extract refresh token from cookie or header
+        refresh_token = None
+        if request:
+            refresh_token = request.cookies.get("refresh_token") or request.headers.get("X-Refresh-Token")
+        
+        if refresh_token:
+            # Attempt to refresh using the refresh token
+            new_tokens = jwt_handler.refresh_access_token(refresh_token)
+            if new_tokens:
+                # Return new payload with refresh header
+                new_payload = jwt_handler.verify_token(new_tokens["access_token"], "access")
+                if new_payload:
+                    # Set the new access token in response header
+                    if request:
+                        request.state.new_access_token = new_tokens["access_token"]
+                    return new_payload
+        
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
+            detail="Invalid or expired token. Please log in again.",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
