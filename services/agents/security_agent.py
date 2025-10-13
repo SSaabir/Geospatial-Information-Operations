@@ -654,22 +654,32 @@ def security_response_node(state: SecurityState) -> SecurityState:
     
     return state
 
-# Create security workflow
-security_workflow = StateGraph(SecurityState)
+# Lazy initialization to prevent duplicate node errors
+def _create_security_workflow():
+    """Create and return the compiled security workflow"""
+    security_workflow = StateGraph(SecurityState)
+    
+    # Add nodes
+    security_workflow.add_node("validation", validation_node)
+    security_workflow.add_node("threat_analysis", threat_analysis_node)
+    security_workflow.add_node("security_response", security_response_node)
+    
+    # Add edges
+    security_workflow.add_edge(START, "validation")
+    security_workflow.add_edge("validation", "threat_analysis")
+    security_workflow.add_edge("threat_analysis", "security_response")
+    security_workflow.add_edge("security_response", END)
+    
+    return security_workflow.compile()
 
-# Add nodes
-security_workflow.add_node("validation", validation_node)
-security_workflow.add_node("threat_analysis", threat_analysis_node)
-security_workflow.add_node("security_response", security_response_node)
+_security_app_instance = None
 
-# Add edges
-security_workflow.add_edge(START, "validation")
-security_workflow.add_edge("validation", "threat_analysis")
-security_workflow.add_edge("threat_analysis", "security_response")
-security_workflow.add_edge("security_response", END)
-
-# Compile security agent
-security_app = security_workflow.compile()
+def _get_security_app():
+    """Get or create the security workflow"""
+    global _security_app_instance
+    if _security_app_instance is None:
+        _security_app_instance = _create_security_workflow()
+    return _security_app_instance
 
 def run_security_agent(input_data: Dict) -> str:
     """
@@ -693,6 +703,7 @@ def run_security_agent(input_data: Dict) -> str:
             error=None
         )
         
+        security_app = _get_security_app()
         result = security_app.invoke(initial_state)
         return result["output"]
         

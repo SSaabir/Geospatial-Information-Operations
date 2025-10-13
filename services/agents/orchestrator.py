@@ -827,42 +827,52 @@ def should_run_report_generation(state: EnhancedWorkflowState) -> str:
     else:
         return "enhanced_output_compilation"
 
-# Build Enhanced Multi-Agent Workflow
-enhanced_workflow = StateGraph(EnhancedWorkflowState)
+# Lazy initialization to prevent duplicate node errors
+def _create_enhanced_workflow():
+    """Create and return the compiled enhanced orchestrator workflow"""
+    enhanced_workflow = StateGraph(EnhancedWorkflowState)
+    
+    # Add enhanced nodes
+    enhanced_workflow.add_node("enhanced_start", enhanced_start_node)
+    enhanced_workflow.add_node("enhanced_collector", enhanced_collector_node)
+    enhanced_workflow.add_node("enhanced_trend_analysis", enhanced_trend_analysis_node)
+    enhanced_workflow.add_node("enhanced_report_generation", enhanced_report_generation_node)
+    enhanced_workflow.add_node("enhanced_output_compilation", enhanced_output_compilation_node)
+    enhanced_workflow.add_node("enhanced_end", enhanced_end_node)
+    
+    # Add enhanced edges with conditional routing
+    enhanced_workflow.add_edge(START, "enhanced_start")
+    enhanced_workflow.add_edge("enhanced_start", "enhanced_collector")
+    enhanced_workflow.add_conditional_edges(
+        "enhanced_collector",
+        should_run_trend_analysis,
+        {
+            "enhanced_trend_analysis": "enhanced_trend_analysis",
+            "enhanced_output_compilation": "enhanced_output_compilation"
+        }
+    )
+    enhanced_workflow.add_conditional_edges(
+        "enhanced_trend_analysis",
+        should_run_report_generation,
+        {
+            "enhanced_report_generation": "enhanced_report_generation",
+            "enhanced_output_compilation": "enhanced_output_compilation"
+        }
+    )
+    enhanced_workflow.add_edge("enhanced_report_generation", "enhanced_output_compilation")
+    enhanced_workflow.add_edge("enhanced_output_compilation", "enhanced_end")
+    enhanced_workflow.add_edge("enhanced_end", END)
+    
+    return enhanced_workflow.compile()
 
-# Add enhanced nodes
-enhanced_workflow.add_node("enhanced_start", enhanced_start_node)
-enhanced_workflow.add_node("enhanced_collector", enhanced_collector_node)
-enhanced_workflow.add_node("enhanced_trend_analysis", enhanced_trend_analysis_node)
-enhanced_workflow.add_node("enhanced_report_generation", enhanced_report_generation_node)
-enhanced_workflow.add_node("enhanced_output_compilation", enhanced_output_compilation_node)
-enhanced_workflow.add_node("enhanced_end", enhanced_end_node)
+_enhanced_app_instance = None
 
-# Add enhanced edges with conditional routing
-enhanced_workflow.add_edge(START, "enhanced_start")
-enhanced_workflow.add_edge("enhanced_start", "enhanced_collector")
-enhanced_workflow.add_conditional_edges(
-    "enhanced_collector",
-    should_run_trend_analysis,
-    {
-        "enhanced_trend_analysis": "enhanced_trend_analysis",
-        "enhanced_output_compilation": "enhanced_output_compilation"
-    }
-)
-enhanced_workflow.add_conditional_edges(
-    "enhanced_trend_analysis",
-    should_run_report_generation,
-    {
-        "enhanced_report_generation": "enhanced_report_generation",
-        "enhanced_output_compilation": "enhanced_output_compilation"
-    }
-)
-enhanced_workflow.add_edge("enhanced_report_generation", "enhanced_output_compilation")
-enhanced_workflow.add_edge("enhanced_output_compilation", "enhanced_end")
-enhanced_workflow.add_edge("enhanced_end", END)
-
-# Compile enhanced workflow
-enhanced_app = enhanced_workflow.compile()
+def _get_enhanced_app():
+    """Get or create the enhanced orchestrator workflow"""
+    global _enhanced_app_instance
+    if _enhanced_app_instance is None:
+        _enhanced_app_instance = _create_enhanced_workflow()
+    return _enhanced_app_instance
 
 def run_enhanced_orchestrator_workflow(user_input: str, user_context: Dict = None) -> Dict:
     """
@@ -900,6 +910,7 @@ def run_enhanced_orchestrator_workflow(user_input: str, user_context: Dict = Non
     )
     
     try:
+        enhanced_app = _get_enhanced_app()
         result = enhanced_app.invoke(initial_state)
         return result
     except Exception as e:

@@ -831,22 +831,32 @@ def ethics_evaluation_node(state: ResponsibleAIState) -> ResponsibleAIState:
     
     return state
 
-# Create responsible AI workflow
-responsible_ai_workflow = StateGraph(ResponsibleAIState)
+# Lazy initialization to prevent duplicate node errors
+def _create_responsible_ai_workflow():
+    """Create and return the compiled responsible AI workflow"""
+    responsible_ai_workflow = StateGraph(ResponsibleAIState)
+    
+    # Add nodes
+    responsible_ai_workflow.add_node("bias_detection", bias_detection_node)
+    responsible_ai_workflow.add_node("fairness_assessment", fairness_assessment_node)
+    responsible_ai_workflow.add_node("ethics_evaluation", ethics_evaluation_node)
+    
+    # Add edges
+    responsible_ai_workflow.add_edge(START, "bias_detection")
+    responsible_ai_workflow.add_edge("bias_detection", "fairness_assessment")
+    responsible_ai_workflow.add_edge("fairness_assessment", "ethics_evaluation")
+    responsible_ai_workflow.add_edge("ethics_evaluation", END)
+    
+    return responsible_ai_workflow.compile()
 
-# Add nodes
-responsible_ai_workflow.add_node("bias_detection", bias_detection_node)
-responsible_ai_workflow.add_node("fairness_assessment", fairness_assessment_node)
-responsible_ai_workflow.add_node("ethics_evaluation", ethics_evaluation_node)
+_responsible_ai_app_instance = None
 
-# Add edges
-responsible_ai_workflow.add_edge(START, "bias_detection")
-responsible_ai_workflow.add_edge("bias_detection", "fairness_assessment")
-responsible_ai_workflow.add_edge("fairness_assessment", "ethics_evaluation")
-responsible_ai_workflow.add_edge("ethics_evaluation", END)
-
-# Compile responsible AI agent
-responsible_ai_app = responsible_ai_workflow.compile()
+def _get_responsible_ai_app():
+    """Get or create the responsible AI workflow"""
+    global _responsible_ai_app_instance
+    if _responsible_ai_app_instance is None:
+        _responsible_ai_app_instance = _create_responsible_ai_workflow()
+    return _responsible_ai_app_instance
 
 def run_responsible_ai_assessment(model_predictions: Any, training_data: Any = None, model_metadata: Dict = None) -> str:
     """
@@ -873,6 +883,7 @@ def run_responsible_ai_assessment(model_predictions: Any, training_data: Any = N
             error=None
         )
         
+        responsible_ai_app = _get_responsible_ai_app()
         result = responsible_ai_app.invoke(initial_state)
         return result["output"]
         

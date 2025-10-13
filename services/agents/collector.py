@@ -740,9 +740,7 @@ class collectorState(TypedDict):
     publishedAt: list | None
     output: str  # collected data
 
-# Define LangGraph nodes
-graph = StateGraph(collectorState)
-
+# Define collector node function
 def collector_node(state: collectorState) -> collectorState:
     """
     Enhanced collector that prioritizes database queries.
@@ -793,14 +791,23 @@ def collector_node(state: collectorState) -> collectorState:
 
     return state
 
-graph.add_node("collector", collector_node)
-graph.add_edge(START, "collector")  # input query
-graph.add_edge("collector", END)  # outputs collected data
+# Lazy initialization to prevent duplicate node errors
+def _create_collector_graph():
+    """Create and return the compiled collector graph"""
+    graph = StateGraph(collectorState)
+    graph.add_node("collector", collector_node)
+    graph.add_edge(START, "collector")  # input query
+    graph.add_edge("collector", END)  # outputs collected data
+    return graph.compile()
 
-# Run graph
-app = graph.compile()
-#result = app.invoke({"input": "upload_air_quality_to_postgres for Colombo"})
-#print(result["output"])
+_collector_app_instance = None
+
+def _get_collector_app():
+    """Get or create the collector graph"""
+    global _collector_app_instance
+    if _collector_app_instance is None:
+        _collector_app_instance = _create_collector_graph()
+    return _collector_app_instance
 
 
 def run_collector_agent(query: str) -> str:
@@ -853,6 +860,7 @@ def run_collector_agent(query: str) -> str:
         return json.dumps(output, default=str)
     # Otherwise, use the agent workflow (LLM/tools)
     try:
+        app = _get_collector_app()
         result = app.invoke({"input": query})
         output = result.get("output", "")
         if len(output) > 10000:
@@ -883,10 +891,6 @@ def run_collector_agent(query: str) -> str:
             "note": "Please try a more specific query or contact support"
         }
         return json.dumps(error_response)
-
-    """Run the collector agent with the given query and return the output."""
-    result = app.invoke({"input": query})
-    return result["output"]
 
 
 # ====================================================================
