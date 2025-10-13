@@ -1,0 +1,244 @@
+# api/weather_prediction_api.py
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field, validator
+import joblib
+import numpy as np
+import pandas as pd
+from datetime import datetime
+import os
+from typing import Dict, Optional
+import logging
+import traceback
+
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# Create router
+weather_router = APIRouter(
+    prefix="/api/weather",
+    tags=["Weather Prediction"]
+)
+
+# Define model path
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_DIR = os.path.join(BASE_DIR, "agents", "predict")
+
+logger.info(f"Weather Prediction API - Model directory: {MODEL_DIR}")
+
+# Load models at module level
+model = None
+label_encoder = None
+imputer = None
+
+def load_models():
+    """Load ML models"""
+    global model, label_encoder, imputer
+    
+    try:
+        model_file = os.path.join(MODEL_DIR, "climate_condition_model_optimized.pkl")
+        encoder_file = os.path.join(MODEL_DIR, "label_encoder.pkl")
+        imputer_file = os.path.join(MODEL_DIR, "feature_imputer.pkl")
+        
+        if not os.path.exists(MODEL_DIR):
+            logger.warning(f"Model directory not found: {MODEL_DIR}")
+            return False
+            
+        if not all(os.path.exists(f) for f in [model_file, encoder_file, imputer_file]):
+            logger.warning("One or more model files not found")
+            return False
+        
+        model = joblib.load(model_file)
+        label_encoder = joblib.load(encoder_file)
+        imputer = joblib.load(imputer_file)
+        
+        logger.info("✅ Weather prediction models loaded successfully")
+        logger.info(f"✅ Available conditions: {list(label_encoder.classes_)}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error loading weather prediction models: {e}")
+        logger.error(traceback.format_exc())
+        return False
+
+# Try to load models on import
+load_models()
+
+# Pydantic models
+class WeatherInput(BaseModel):
+    datetime: str = Field(..., description="Date in MM/DD/YYYY format", example="2/19/1997")
+    sunrise: str = Field(..., description="Sunrise time in hh:mm:ss AM/PM format", example="6:56:39 AM")
+    sunset: str = Field(..., description="Sunset time in hh:mm:ss AM/PM format", example="6:52:29 PM")
+    humidity: float = Field(..., ge=0, le=100, description="Humidity percentage (0-100)", example=70.0)
+    sealevelpressure: float = Field(..., ge=900, le=1100, description="Sea level pressure in hPa", example=1020.0)
+    temp: float = Field(..., ge=-50, le=60, description="Temperature in Celsius", example=20.0)
+    
+    @validator('datetime')
+    def validate_datetime(cls, v):
+        try:
+            pd.to_datetime(v, format="%m/%d/%Y")
+            return v
+        except:
+            raise ValueError("Date must be in MM/DD/YYYY format")
+    
+    @validator('sunrise', 'sunset')
+    def validate_time(cls, v):
+        try:
+            pd.to_datetime(v, format="%I:%M:%S %p")
+            return v
+        except:
+            raise ValueError("Time must be in hh:mm:ss AM/PM format")
+
+class PredictionResponse(BaseModel):
+    result: str
+    confidence: float
+    all_probabilities: Dict[str, float]
+    processed_features: Dict[str, float]
+
+@weather_router.get("/health")
+async def weather_health():
+    """Check if weather prediction service is available"""
+    models_loaded = all([model is not None, label_encoder is not None, imputer is not None])
+    
+    return {
+        "status": "healthy" if models_loaded else "models_not_loaded",
+        "models_loaded": models_loaded,
+        "model_directory": MODEL_DIR,
+        "available_conditions": list(label_encoder.classes_) if label_encoder else []
+    }
+
+@weather_router.get("/conditions")
+async def get_conditions():
+    """Get all available weather conditions"""
+    if label_encoder is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Weather prediction models not loaded. Please ensure model files exist."
+        )
+    
+    return {
+        "conditions": list(label_encoder.classes_),
+        "total": len(label_encoder.classes_)
+    }
+
+@weather_router.post("/predict", response_model=PredictionResponse)
+async def predict_weather(data: WeatherInput):
+    """
+    Predict weather condition based on atmospheric parameters
+    
+    - **datetime**: Date in MM/DD/YYYY format
+    - **sunrise**: Sunrise time in hh:mm:ss AM/PM format
+    - **sunset**: Sunset time in hh:mm:ss AM/PM format
+    - **humidity**: Humidity percentage (0-100)
+    - **sealevelpressure**: Sea level pressure in hPa (900-1100)
+    - **temp**: Temperature in Celsius (-50 to 60)
+    """
+    
+    # Check if models are loaded
+    if model is None or label_encoder is None or imputer is None:
+        # Try to reload models
+        if not load_models():
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "Weather prediction models not loaded",
+                    "message": "Please ensure model files exist in the agents/predict directory",
+                    "model_path": MODEL_DIR,
+                    "required_files": [
+                        "climate_condition_model.pkl",
+                        "label_encoder.pkl",
+                        "feature_imputer.pkl"
+                    ]
+                }
+            )
+    
+    try:
+        logger.info(f"📥 Weather prediction request - Date: {data.datetime}, Temp: {data.temp}°C")
+        
+        # Parse datetime
+        dt = pd.to_datetime(data.datetime, format="%m/%d/%Y")
+        sunrise = pd.to_datetime(data.sunrise, format="%I:%M:%S %p")
+        sunset = pd.to_datetime(data.sunset, format="%I:%M:%S %p")
+        
+        # Feature engineering (same as training)
+        dayofyear = dt.dayofyear
+        doy_sin = np.sin(2 * np.pi * dayofyear / 365.25)
+        doy_cos = np.cos(2 * np.pi * dayofyear / 365.25)
+        
+        # Create feature array in the same order as training
+        features = np.array([[
+            doy_sin,
+            doy_cos,
+            sunrise.hour,
+            sunrise.minute,
+            sunset.hour,
+            sunset.minute,
+            data.humidity,
+            data.sealevelpressure,
+            data.temp
+        ]])
+        
+        # Impute and predict
+        features_imputed = imputer.transform(features)
+        prediction_encoded = model.predict(features_imputed)
+        prediction = label_encoder.inverse_transform(prediction_encoded)[0]
+        
+        # Get confidence scores
+        probabilities = model.predict_proba(features_imputed)[0]
+        max_confidence = float(np.max(probabilities))
+        
+        # Create probability dictionary
+        all_probabilities = {
+            str(label): float(prob) 
+            for label, prob in zip(label_encoder.classes_, probabilities)
+        }
+        
+        # Sort by probability (highest first)
+        all_probabilities = dict(sorted(all_probabilities.items(), key=lambda x: x[1], reverse=True))
+        
+        # Processed features for response
+        processed_features = {
+            "doy_sin": float(doy_sin),
+            "doy_cos": float(doy_cos),
+            "dayofyear": int(dayofyear),
+            "sunrise_hour": int(sunrise.hour),
+            "sunrise_minute": int(sunrise.minute),
+            "sunset_hour": int(sunset.hour),
+            "sunset_minute": int(sunset.minute),
+            "humidity": float(data.humidity),
+            "sealevelpressure": float(data.sealevelpressure),
+            "temp": float(data.temp)
+        }
+        
+        logger.info(f"✅ Prediction: {prediction} (Confidence: {max_confidence:.2%})")
+        
+        return {
+            "result": f"Predicted Weather Condition: {prediction}",
+            "confidence": max_confidence,
+            "all_probabilities": all_probabilities,
+            "processed_features": processed_features
+        }
+        
+    except ValueError as ve:
+        logger.error(f"Validation error: {ve}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(ve)}")
+    except Exception as e:
+        logger.error(f"Prediction error: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
+
+@weather_router.post("/reload-models")
+async def reload_models():
+    """Reload weather prediction models (admin only)"""
+    success = load_models()
+    
+    if success:
+        return {
+            "status": "success",
+            "message": "Models reloaded successfully",
+            "available_conditions": list(label_encoder.classes_) if label_encoder else []
+        }
+    else:
+        raise HTTPException(
+            status_code=503,
+            detail="Failed to reload models. Check server logs for details."
+        )
