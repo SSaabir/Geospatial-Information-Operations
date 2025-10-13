@@ -9,11 +9,15 @@ from scipy import stats
 import os
 import json
 import time
+import warnings
 from sqlalchemy import create_engine, exc  # For PostgreSQL connection
 from sqlalchemy.engine.base import Engine
 from typing import Optional, Union
 from dotenv import load_dotenv
 import logging
+
+# Suppress LangChain deprecation warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning, module='langchain')
 
 # LangChain and LangGraph imports
 from langgraph.graph import StateGraph, END, START
@@ -1146,24 +1150,36 @@ def output_compilation_node(state: TrendState) -> TrendState:
     return state
 
 
-# Create StateGraph
-graph = StateGraph(TrendState)
+# Create StateGraph (wrapped in function to avoid duplicate node errors on reimport)
+def _create_trend_graph():
+    """Create and return the compiled trend analysis graph"""
+    graph = StateGraph(TrendState)
+    
+    # Add nodes
+    graph.add_node("data_info", data_info_node)
+    graph.add_node("analysis", analysis_node)
+    graph.add_node("visualization", visualization_node)
+    graph.add_node("output", output_compilation_node)
+    
+    # Add edges
+    graph.add_edge(START, "data_info")
+    graph.add_edge("data_info", "analysis")
+    graph.add_edge("analysis", "visualization")
+    graph.add_edge("visualization", "output")
+    graph.add_edge("output", END)
+    
+    # Compile the graph
+    return graph.compile()
 
-# Add nodes
-graph.add_node("data_info", data_info_node)
-graph.add_node("analysis", analysis_node)
-graph.add_node("visualization", visualization_node)
-graph.add_node("output", output_compilation_node)
+# Create the graph instance (lazy initialization to avoid duplicate nodes)
+_trend_app_instance = None
 
-# Add edges
-graph.add_edge(START, "data_info")
-graph.add_edge("data_info", "analysis")
-graph.add_edge("analysis", "visualization")
-graph.add_edge("visualization", "output")
-graph.add_edge("output", END)
-
-# Compile the graph
-trend_app = graph.compile()
+def _get_trend_app():
+    """Get or create the trend analysis graph"""
+    global _trend_app_instance
+    if _trend_app_instance is None:
+        _trend_app_instance = _create_trend_graph()
+    return _trend_app_instance
 
 
 def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str = None, collector_result: Optional[dict] = None) -> str:
@@ -1211,7 +1227,8 @@ def run_trend_analysis_agent(query: str, start_date: str = None, end_date: str =
         # Pass the agent to the graph's initial state
         initial_state["agent"] = agent
         
-        # Run the graph
+        # Run the graph (use lazy-loaded instance)
+        trend_app = _get_trend_app()
         result = trend_app.invoke(initial_state)
         return result["output"]
         
