@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, status, BackgroundTasks, Request
 from pydantic import BaseModel, Field, EmailStr
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -80,12 +80,12 @@ async def verify_email_code(request: VerifyCodeRequest, db: Session = Depends(ge
         if not stored_code or stored_code != request.code:
             raise HTTPException(status_code=400, detail="Invalid or expired verification code")
 
-        # Mark user email as verified if exists
-        user = db.query(UserDB).filter(UserDB.email == request.email).first()
-        if user:
-            if hasattr(user, "email_verified"):
-                user.email_verified = True
-                db.commit()
+        # Mark user email as verified if exists (email_verified column not in schema yet)
+        # user = db.query(UserDB).filter(UserDB.email == request.email).first()
+        # if user:
+        #     if hasattr(user, "email_verified"):
+        #         user.email_verified = True
+        #         db.commit()
 
         email_verification_codes.pop(request.email, None)
         return {"message": "Email successfully verified"}
@@ -98,7 +98,7 @@ async def verify_email_code(request: VerifyCodeRequest, db: Session = Depends(ge
 # ------------------------------------------------------------------ #
 
 @auth_router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
+async def register_user(user_data: UserCreate, request: Request, db: Session = Depends(get_db)):
     """
     Register a new user
     """
@@ -114,10 +114,10 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             detail = "Username already exists" if existing_user.username == user_data.username else "Email already exists"
             raise HTTPException(status_code=400, detail=detail)
 
-        # Ensure email verified before registration (optional)
-        verified_code = email_verification_codes.get(user_data.email)
-        if not verified_code:
-            raise HTTPException(status_code=400, detail="Please verify your email before registration")
+        # Optional: Check if email was verified (not required for demo)
+        # verified_code = email_verification_codes.get(user_data.email)
+        # if not verified_code:
+        #     raise HTTPException(status_code=400, detail="Please verify your email before registration")
 
         hashed_password = get_password_hash(user_data.password)
         new_user = UserDB(
@@ -127,8 +127,7 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
             hashed_password=hashed_password,
             is_active=user_data.is_active,
             avatar_url=f"https://api.dicebear.com/7.x/avataaars/svg?seed={user_data.username}",
-            tier=user_data.tier or "free",
-            email_verified=True if hasattr(UserDB, "email_verified") else None
+            tier=user_data.tier or "free"
         )
 
         db.add(new_user)
@@ -137,7 +136,8 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
         logger.info(f"New user registered: {new_user.username}")
         try:
             # Log auth event (best-effort)
-            log_auth_event("register", new_user.id, True)
+            client_ip = request.client.host if request.client else "unknown"
+            log_auth_event("register", new_user.id, client_ip, True)
             increment_usage_metrics(new_user.id, api_calls=1)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during register: %s", e)
@@ -179,7 +179,7 @@ async def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
 # ------------------------------------------------------------------ #
 
 @auth_router.post("/login", response_model=Dict[str, Any])
-async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+async def login_user(user_credentials: UserLogin, request: Request, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     try:
         user = db.query(UserDB).filter(UserDB.email == user_credentials.email).first()
 
@@ -234,7 +234,8 @@ async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTa
         response_data = {**tokens, "user": UserResponse.from_orm(user).dict()}
         logger.info(f"User logged in: {user.username}")
         try:
-            log_auth_event("login", user.id, True)
+            client_ip = request.client.host if request.client else "unknown"
+            log_auth_event("login", user.id, client_ip, True)
             increment_usage_metrics(user.id, api_calls=1)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during login: %s", e)
@@ -256,7 +257,7 @@ async def login_user(user_credentials: UserLogin, background_tasks: BackgroundTa
         raise HTTPException(status_code=500, detail="Login failed")
 
 @auth_router.post("/logout")
-async def logout_user(current_user: UserDB = Depends(get_current_user), credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def logout_user(request: Request, current_user: UserDB = Depends(get_current_user), credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials
         # Blacklist the current access token
@@ -275,7 +276,8 @@ async def logout_user(current_user: UserDB = Depends(get_current_user), credenti
         
         # Log the logout event
         try:
-            log_auth_event("logout", current_user.id, True)
+            client_ip = request.client.host if request.client else "unknown"
+            log_auth_event("logout", current_user.id, client_ip, True)
         except Exception as e:
             logger.exception("Non-fatal: failed to log auth event during logout: %s", e)
         

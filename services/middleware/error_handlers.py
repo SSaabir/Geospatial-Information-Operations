@@ -4,6 +4,7 @@ import traceback
 from typing import Dict, Any, Optional
 from fastapi import Request, status, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 import time
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,34 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         }
     )
 
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Handle Pydantic validation errors with detailed field-level information"""
+    errors = []
+    for error in exc.errors():
+        field = " -> ".join(str(loc) for loc in error["loc"])
+        errors.append({
+            "field": field,
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    
+    logger.warning(f"Validation error on {request.method} {request.url.path}: {errors}")
+    
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={
+            "detail": "Validation error - please check the request data",
+            "errors": errors,
+            "path": request.url.path,
+            "timestamp": time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+    )
+
 def setup_error_handlers(app):
     """Set up global error handlers for the application"""
+    # Add validation error handler
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    
     @app.middleware("http")
     async def error_handling_middleware(request: Request, call_next):
         try:

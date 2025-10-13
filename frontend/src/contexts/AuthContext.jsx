@@ -100,12 +100,23 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const clearAuthData = () => {
+    // Clear state
     setUser(null);
     setAccessToken(null);
     setRefreshToken(null);
+    
+    // Clear all auth-related localStorage keys
     localStorage.removeItem('user');
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token'); // Legacy token key (used in some components)
+    
+    // Clear sessionStorage completely
+    sessionStorage.clear();
+    
+    // Optional: Clear all localStorage for this app (uncomment if needed)
+    // Note: This will clear ALL localStorage, including theme preferences, etc.
+    // localStorage.clear();
   };
 
   const refreshAccessToken = async (refresh_token) => {
@@ -179,6 +190,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      // Call backend to blacklist token (if we have one)
       if (accessToken) {
         await apiCall('/auth/logout', {
           method: 'POST',
@@ -188,7 +200,12 @@ export const AuthProvider = ({ children }) => {
       console.error('Logout API call failed:', error);
       // Continue with local logout even if API call fails
     } finally {
+      // Always clear local data regardless of API call success
       clearAuthData();
+      
+      // Optional: Clear any other app-specific cache/data
+      // You can add more cleanup here if needed
+      console.log('User logged out - all data cleared from storage');
     }
   };
 

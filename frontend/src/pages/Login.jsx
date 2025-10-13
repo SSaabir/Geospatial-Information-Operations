@@ -15,7 +15,7 @@ const loginSchema = yup.object().shape({
 const signupSchema = yup.object().shape({
   name: yup.string().trim().required("Full name is required"),
   email: yup.string().trim().email("Invalid email format").required("Email is required"),
-  password: yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+  password: yup.string().min(8, "Password must be at least 8 characters").required("Password is required"),
   confirmPassword: yup
     .string()
     .oneOf([yup.ref("password"), null], "Passwords must match")
@@ -77,7 +77,13 @@ export default function Login() {
         setIsLoading(false);
 
         if (!res.ok) {
-          setError(data.detail || 'Signup failed');
+          // Handle validation errors with field details
+          if (data.errors && Array.isArray(data.errors)) {
+            const errorMessages = data.errors.map(err => `${err.field}: ${err.message}`).join(', ');
+            setError(`Validation Error: ${errorMessages}`);
+          } else {
+            setError(data.detail || 'Signup failed');
+          }
         } else {
           setIsLogin(true);
           reset();
