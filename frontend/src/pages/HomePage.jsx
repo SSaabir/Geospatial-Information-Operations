@@ -111,17 +111,10 @@ const ClimateHomepage = () => {
                 <span>Chat with AI</span>
               </Link>
               <Link 
-                to="/weather-predictor" 
+                to="/pricing" 
                 className="px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl border-2 flex items-center space-x-2" 
                 style={{borderColor: '#CDC1FF', color: '#6B46C1', backgroundColor: 'white'}}
               >
-                <FileText className="w-5 h-5" />
-                <span>Prediction Form</span>
-              <Link to="/chat" className="px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2" style={{backgroundColor: '#A294F9'}}>
-                <MessageSquare className="w-5 h-5" />
-                <span>Chat with AI</span>
-              </Link>
-              <Link to="/pricing" className="px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl border-2 flex items-center space-x-2" style={{borderColor: '#CDC1FF', color: '#6B46C1', backgroundColor: 'white'}}>
                 <TrendingUp className="w-5 h-5" />
                 <span>View Plans</span>
               </Link>

@@ -73,7 +73,7 @@ export default function Header() {
               >
                 <Settings className="w-4 h-4" />
                 <span className="font-medium">Admin</span>
-              </Link>
+              </a>
             )}
           </nav>
 
@@ -195,7 +195,7 @@ export default function Header() {
                 >
                   <Settings className="w-5 h-5" />
                   <span className="font-medium">Admin Panel</span>
-                </Link>
+                </a>
               )}
             </nav>
           </div>
