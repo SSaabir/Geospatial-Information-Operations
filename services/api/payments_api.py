@@ -139,10 +139,11 @@ async def create_payment(
     # Notify about recorded payment (non-blocking)
     try:
         notify(
-            subject="Payment recorded",
-            message=f"Payment recorded for user {user.username} (id={user.id}) for plan {plan}, amount ${float(payment.amount):.2f}.",
-            level="info",
-            metadata={"user_id": user.id, "payment_id": payment.id, "amount": float(payment.amount), "plan": plan}
+            subject="Payment Received",
+            message=f"Your payment of ${float(payment.amount):.2f} for the {plan.title()} plan has been processed successfully.",
+            level="success",
+            metadata={"user_id": user.id, "payment_id": payment.id, "amount": float(payment.amount), "plan": plan},
+            user_id=user.id
         )
     except Exception:
         logger.exception("Non-fatal: failed to send payment notification")
@@ -195,10 +196,11 @@ async def create_session(
     # Notify user about checkout session creation
     try:
         notify(
-            subject="Checkout session created",
-            message=f"Checkout session {session_id} created for user {current_user.username} (id={current_user.id}) for plan {plan}, amount ${amount:.2f}.",
+            subject="Checkout Session Created",
+            message=f"Your checkout session for the {plan.title()} plan (${amount:.2f}) is ready. Complete your payment to activate your subscription.",
             level="info",
-            metadata={"user_id": current_user.id, "session_id": session_id, "amount": amount, "plan": plan}
+            metadata={"user_id": current_user.id, "session_id": session_id, "amount": amount, "plan": plan},
+            user_id=current_user.id
         )
     except Exception:
         logger.exception("Non-fatal: failed to send checkout-session notification")
@@ -277,10 +279,11 @@ async def pay_session(session_id: str, payload: PayRequest, current_user: UserDB
     # Notify about successful payment (non-blocking)
     try:
         notify(
-            subject="Payment successful",
-            message=f"User {user.username} (id={user.id}) completed payment for plan {session.plan}, amount ${float(payment.amount):.2f}.",
-            level="info",
-            metadata={"user_id": user.id, "payment_id": payment.id, "amount": float(payment.amount), "plan": session.plan}
+            subject="Payment Successful! 🎉",
+            message=f"Congratulations! Your {session.plan.title()} plan is now active. You have full access to all premium features.",
+            level="success",
+            metadata={"user_id": user.id, "payment_id": payment.id, "amount": float(payment.amount), "plan": session.plan},
+            user_id=user.id
         )
     except Exception:
         logger.exception("Non-fatal: failed to send payment-success notification")
@@ -354,10 +357,11 @@ def expire_once(db: Session):
             logger.info("Downgraded user %s due to expired payment", u.username)
             try:
                 notify(
-                    subject="Subscription downgraded",
-                    message=f"Your subscription has been downgraded to 'free' because your payment expired. User: {u.username} (id={u.id})",
-                    level="info",
-                    metadata={"user_id": u.id}
+                    subject="Subscription Expired",
+                    message=f"Your subscription has expired and you've been moved to the Free plan. Upgrade anytime to regain access to premium features.",
+                    level="warning",
+                    metadata={"user_id": u.id},
+                    user_id=u.id
                 )
             except Exception:
                 logger.exception("Non-fatal: failed to send subscription-downgrade notification")

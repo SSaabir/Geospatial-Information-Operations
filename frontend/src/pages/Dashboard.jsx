@@ -20,18 +20,45 @@ export default function Dashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        const tempRes = await fetch('http://localhost:8000/api/weather/latest');
-        const tempData = await tempRes.json();
-        setTemperatureData(tempData);
+        // Use mock data for now since weather endpoints are not implemented yet
+        // TODO: Replace with actual API calls when weather endpoints are created
+        
+        // Mock temperature data
+        setTemperatureData([
+          { time: '00:00', temp: 24.5, humidity: 78 },
+          { time: '04:00', temp: 23.2, humidity: 82 },
+          { time: '08:00', temp: 26.8, humidity: 75 },
+          { time: '12:00', temp: 31.5, humidity: 65 },
+          { time: '16:00', temp: 29.3, humidity: 70 },
+          { time: '20:00', temp: 26.1, humidity: 76 }
+        ]);
 
-        const weeklyRes = await fetch('http://localhost:8000/api/weather/weekly');
-        setWeeklyData(await weeklyRes.json());
+        // Mock weekly data
+        setWeeklyData([
+          { day: 'Mon', temp: 28, rainfall: 2 },
+          { day: 'Tue', temp: 29, rainfall: 0 },
+          { day: 'Wed', temp: 31, rainfall: 5 },
+          { day: 'Thu', temp: 30, rainfall: 12 },
+          { day: 'Fri', temp: 27, rainfall: 8 },
+          { day: 'Sat', temp: 28, rainfall: 3 },
+          { day: 'Sun', temp: 29, rainfall: 0 }
+        ]);
 
-        const regionRes = await fetch('http://localhost:8000/api/weather/regions');
-        setRegionData(await regionRes.json());
+        // Mock region data
+        setRegionData([
+          { name: 'Colombo', value: 30, color: '#8B5CF6' },
+          { name: 'Kandy', value: 25, color: '#6366F1' },
+          { name: 'Galle', value: 28, color: '#A855F7' },
+          { name: 'Jaffna', value: 32, color: '#EC4899' }
+        ]);
 
-        const alertsRes = await fetch('http://localhost:8000/api/weather/alerts');
-        setAlerts(await alertsRes.json());
+        // Mock alerts
+        setAlerts([
+          { id: 1, type: 'warning', message: 'Heavy rainfall expected in Colombo', time: '2 hours ago' },
+          { id: 2, type: 'info', message: 'Temperature rising in northern regions', time: '5 hours ago' },
+          { id: 3, type: 'success', message: 'Weather conditions optimal for outdoor activities', time: '1 day ago' }
+        ]);
+
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
       }

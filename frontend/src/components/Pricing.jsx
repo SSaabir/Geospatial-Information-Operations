@@ -37,7 +37,7 @@ const plans = [
     features: [
       'Seasonal outlook + risk analysis (Ensemble AI)',
       '20+ years historical data',
-      'Upload + sell datasets',
+      'Priority support',
       'Enterprise analytics',
       'Full + custom reports',
       'Unlimited API calls',
@@ -132,7 +132,7 @@ export default function Pricing() {
                   ['Reports', 'None', 'PDF/Excel summary', 'Full + Custom reports'],
                   ['Historical Data', 'No', 'Limited (5 years)', 'Full (20+ years)'],
                   ['API Calls / Month', '5', '5,000', 'Unlimited'],
-                  ['Data Exchange Market', 'View only', 'Download', 'Upload + Sell data'],
+                  ['Support', 'Community', 'Email support', 'Priority support'],
                   ['Prediction (AI/ML)', 'Basic model (1-day temp trend)', 'ML prediction (7-day + CI)', 'Advanced AI (seasonal + risk)'],
                 ].map(([feature, free, res, pro], idx) => (
                   <tr

@@ -46,7 +46,7 @@ class NotificationManager:
         # Webhook
         self.webhook_url = os.getenv('GLOBAL_WEBHOOK_URL')
 
-    def notify(self, subject: str, message: str, level: str = 'info', to_email: Optional[str] = None, webhook_url: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+    def notify(self, subject: str, message: str, level: str = 'info', to_email: Optional[str] = None, webhook_url: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None, user_id: Optional[int] = None):
         """Send a notification through available channels.
 
         Channels tried (in order): email (if configured), webhook (if configured), DB store (if engine provided).
@@ -72,7 +72,7 @@ class NotificationManager:
         # Try DB store
         if self.engine:
             try:
-                self._store_notification(subject, message, level, metadata, timestamp)
+                self._store_notification(subject, message, level, metadata, timestamp, user_id)
             except Exception as e:
                 logger.error(f"Failed to store notification to DB: {e}")
 
@@ -106,30 +106,37 @@ class NotificationManager:
         else:
             logger.error(f"Webhook returned status {resp.status_code}: {resp.text}")
 
-    def _store_notification(self, subject: str, message: str, level: str, metadata: Dict[str, Any], timestamp: str):
+    def _store_notification(self, subject: str, message: str, level: str, metadata: Dict[str, Any], timestamp: str, user_id: Optional[int] = None):
         # Attempt to insert into a notifications table. If table doesn't exist, create a lightweight one.
         try:
+            from sqlalchemy import text
             with self.engine.connect() as conn:
                 # Create table if missing (simple portable SQL for Postgres)
-                conn.execute(text := """
+                create_table_sql = text("""
                     CREATE TABLE IF NOT EXISTS notifications (
                         id SERIAL PRIMARY KEY,
                         timestamp TIMESTAMP,
                         level VARCHAR(20),
                         subject VARCHAR(255),
                         message TEXT,
-                        metadata JSONB
+                        metadata JSONB,
+                        read BOOLEAN DEFAULT false,
+                        user_id INTEGER REFERENCES users(id)
                     )
                 """)
-                conn.execute(text := """
-                    INSERT INTO notifications (timestamp, level, subject, message, metadata)
-                    VALUES (:timestamp, :level, :subject, :message, :metadata)
-                """, {
+                conn.execute(create_table_sql)
+                
+                insert_sql = text("""
+                    INSERT INTO notifications (timestamp, level, subject, message, metadata, user_id)
+                    VALUES (:timestamp, :level, :subject, :message, :metadata, :user_id)
+                """)
+                conn.execute(insert_sql, {
                     'timestamp': timestamp,
                     'level': level,
                     'subject': subject,
                     'message': message,
-                    'metadata': json.dumps(metadata)
+                    'metadata': json.dumps(metadata),
+                    'user_id': user_id
                 })
                 conn.commit()
 
@@ -147,9 +154,22 @@ def get_notification_manager(engine=None) -> NotificationManager:
     global _notification_manager_instance
     if _notification_manager_instance is None:
         _notification_manager_instance = NotificationManager(engine=engine)
+    elif engine is not None and _notification_manager_instance.engine is None:
+        # Update engine if one is provided and instance doesn't have one
+        _notification_manager_instance.engine = engine
     return _notification_manager_instance
 
 
-def notify(subject: str, message: str, level: str = 'info', to_email: Optional[str] = None, webhook_url: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None, engine=None):
+def notify(subject: str, message: str, level: str = 'info', to_email: Optional[str] = None, webhook_url: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None, engine=None, user_id: Optional[int] = None):
+    # Auto-fetch engine from db_config if not provided
+    if engine is None:
+        try:
+            from db_config import DatabaseConfig
+            db_config = DatabaseConfig()
+            engine = db_config.get_engine()
+        except Exception as e:
+            logger.debug(f"Could not auto-fetch database engine: {e}")
+            engine = None
+    
     nm = get_notification_manager(engine=engine)
-    nm.notify(subject=subject, message=message, level=level, to_email=to_email, webhook_url=webhook_url, metadata=metadata)
+    nm.notify(subject=subject, message=message, level=level, to_email=to_email, webhook_url=webhook_url, metadata=metadata, user_id=user_id)

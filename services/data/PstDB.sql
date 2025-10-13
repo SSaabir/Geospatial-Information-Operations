@@ -200,7 +200,7 @@ CREATE TABLE usage_metrics (
 );
 
 CREATE TABLE users (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id serial PRIMARY KEY,
     username VARCHAR(50) NOT NULL,
     email VARCHAR(100) NOT NULL,
     hashed_password VARCHAR(255) NOT NULL,

@@ -15,8 +15,10 @@ import {
   Target,
   Award
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 const AIEthicsDashboard = () => {
+  const { apiCall } = useAuth();
   const [ethicsData, setEthicsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -146,17 +148,26 @@ const AIEthicsDashboard = () => {
 
   const fetchEthicsData = async () => {
     try {
-      // Replace with actual API call
-      // const response = await fetch('/api/ai-ethics/dashboard');
-      // const data = await response.json();
-      
-      // Using mock data for now
-      setTimeout(() => {
-        setEthicsData(mockEthicsData);
-        setLoading(false);
-      }, 1000);
+      const [overviewData, biasData, fairnessData, reportsData, assessmentsData] = await Promise.all([
+        apiCall('/ai-ethics-dashboard/overview'),
+        apiCall('/ai-ethics-dashboard/bias-detection'),
+        apiCall('/ai-ethics-dashboard/fairness-metrics'),
+        apiCall('/ai-ethics-dashboard/recent-reports?limit=10'),
+        apiCall('/ai-ethics-dashboard/model-assessments')
+      ]);
+
+      setEthicsData({
+        overview: overviewData.overview,
+        bias_detection: biasData.bias_detection,
+        fairness_metrics: fairnessData.fairness_metrics,
+        recent_reports: reportsData.reports || [],
+        model_assessments: assessmentsData.model_assessments || []
+      });
+      setLoading(false);
     } catch (error) {
       console.error('Failed to fetch AI ethics data:', error);
+      // Fallback to mock data
+      setEthicsData(mockEthicsData);
       setLoading(false);
     }
   };
