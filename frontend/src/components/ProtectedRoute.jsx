@@ -6,6 +6,16 @@ import { Shield, LogIn } from 'lucide-react';
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+  // Debug logging
+  console.log('ProtectedRoute Debug:', {
+    requireAdmin,
+    isAuthenticated,
+    isLoading,
+    user,
+    isAdmin: user?.is_admin,
+    isAdminType: typeof user?.is_admin
+  });
+
   // Show loading state while checking authentication
   if (isLoading) {
     return (
@@ -43,7 +53,18 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   // Check admin requirement
-  if (requireAdmin && !user?.is_admin) {
+  // Use explicit comparison to handle both boolean true and string "true"
+  const isUserAdmin = user?.is_admin === true || user?.is_admin === 'true';
+  
+  if (requireAdmin && !isUserAdmin) {
+    console.error('❌ ACCESS DENIED - Admin check failed:', {
+      requireAdmin,
+      'user?.is_admin (raw)': user?.is_admin,
+      'user?.is_admin (type)': typeof user?.is_admin,
+      'isUserAdmin (computed)': isUserAdmin,
+      'user': user,
+      'Condition': `requireAdmin=${requireAdmin} && !isUserAdmin=${!isUserAdmin}`
+    });
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
         <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100 text-center">
@@ -54,6 +75,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
           <p className="text-gray-600 mb-6">
             You don't have the required permissions to access this page. Admin privileges are required.
           </p>
+          <div className="text-xs text-gray-500 mb-4 p-2 bg-gray-100 rounded">
+            Debug: is_admin = {String(user?.is_admin)} (type: {typeof user?.is_admin})
+          </div>
           <a
             href="/dashboard"
             className="inline-flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:from-gray-700 hover:to-gray-800 transition-all duration-200"
@@ -66,6 +90,15 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   // Render children if authenticated and authorized
+  if (requireAdmin) {
+    console.log('✅ ACCESS GRANTED - Admin check passed:', {
+      'user.is_admin (raw)': user.is_admin,
+      'user.is_admin (type)': typeof user.is_admin,
+      'isUserAdmin': isUserAdmin,
+      'user.id': user.id,
+      'user.username': user.username
+    });
+  }
   return children;
 };
 

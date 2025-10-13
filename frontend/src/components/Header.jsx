@@ -1,29 +1,38 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Cloud, MapPin, Bell, Settings, Search, Menu, LogOut, User, Shield, Brain, ChevronDown, Home, BarChart3, Bot, X } from 'lucide-react';
+import NotificationPanel from './NotificationPanel';
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  const handleLogout = () => {
-    logout();
-    window.location.href = '/';
+  const handleLogout = async () => {
+    setIsDropdownOpen(false);
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      // Force redirect to login page
+      window.location.href = '/login';
+    }
   };
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
-  const navigationItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Workflow', href: '/workflow', icon: Bot },
-    { name: 'Security', href: '/security', icon: Shield },
-    { name: 'AI Ethics', href: '/ai-ethics', icon: Brain },
-    { name: 'Chat Assistant', href: '/chat', icon: Bot },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  // Filter navigation items based on user role
+  const allNavigationItems = [
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, adminOnly: false },
+    { name: 'Workflow', href: '/workflow', icon: Bot, adminOnly: false },
+    { name: 'Chat Assistant', href: '/chat', icon: Bot, adminOnly: false },
   ];
+
+  // Only show non-admin items, or all items if user is admin viewing as regular user
+  const navigationItems = allNavigationItems.filter(item => !item.adminOnly || user?.is_admin);
 
   return (
     <header className="bg-white/95 backdrop-blur-lg border-b border-purple-100 sticky top-0 z-50 shadow-sm">
@@ -56,7 +65,7 @@ export default function Header() {
                 <span className="font-medium">{item.name}</span>
               </a>
             ))}
-            {user?.role === 'admin' && (
+            {user?.is_admin && (
               <a
                 href="/admin/dashboard"
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 ml-2 border-l border-gray-200 pl-6"
@@ -78,10 +87,7 @@ export default function Header() {
                 </button>
 
                 {/* Notifications */}
-                <button className="relative p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200">
-                  <Bell className="w-5 h-5" />
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-                </button>
+                <NotificationPanel />
 
                 {/* User Menu */}
                 <div className="relative">
@@ -178,7 +184,7 @@ export default function Header() {
                   <span className="font-medium">{item.name}</span>
                 </a>
               ))}
-              {user?.role === 'admin' && (
+              {user?.is_admin && (
                 <a
                   href="/admin/dashboard"
                   className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 rounded-lg mx-2 mt-2 pt-4 border-t border-gray-100"

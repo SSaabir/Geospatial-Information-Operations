@@ -22,7 +22,10 @@ import {
   Settings
 } from 'lucide-react';
 
+import { useAuth } from '../contexts/AuthContext';
+
 const SecurityDashboard = () => {
+  const { apiCall } = useAuth();
   const [securityData, setSecurityData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -100,18 +103,27 @@ const SecurityDashboard = () => {
 
   useEffect(() => {
     fetchSecurityData();
-  }, []);
+  }, [timeRange]);
 
   const fetchSecurityData = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      setTimeout(() => {
-        setSecurityData(mockSecurityData);
-        setLoading(false);
-      }, 800);
+      const [overviewData, incidentsData, threatsData] = await Promise.all([
+        apiCall(`/security-dashboard/overview?time_range=${timeRange}`),
+        apiCall('/security-dashboard/incidents?limit=20'),
+        apiCall('/security-dashboard/threat-sources')
+      ]);
+
+      setSecurityData({
+        overview: overviewData.overview,
+        metrics: overviewData.metrics,
+        recent_incidents: incidentsData.incidents || [],
+        threat_sources: threatsData.threat_sources || []
+      });
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching security data:', error);
+      // Fallback to mock data on error
       setSecurityData(mockSecurityData);
       setLoading(false);
     }

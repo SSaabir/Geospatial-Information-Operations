@@ -16,11 +16,15 @@ import OrchestratorDashboard from './pages/OrchestratorDashboard'
 import SecurityDashboard from './pages/SecurityDashboard'
 import AIEthicsDashboard from './pages/AIEthicsDashboard'
 import Phase3Demo from './pages/Phase3Demo'
-import AdminDashboard from './pages/admin/AdminDashboard'
-import Pricing from './pages/Pricing'
+import EnhancedAdminDashboard from './pages/admin/EnhancedAdminDashboard'
+import Pricing from './components/Pricing'
 import Analytics from './pages/Analytics'
-import Marketplace from './pages/Marketplace'   // ✅ (was missing in your pasted code)
-import Settings from './pages/Settings'         // ✅ Added for Settings Page
+import Settings from './pages/Settings'
+import Checkout from './pages/Checkout'
+import PaymentSuccess from './pages/PaymentSuccess'
+import NotificationsPage from './pages/NotificationsPage'
+import DebugAuth from './pages/DebugAuth'
+import AdminTest from './pages/AdminTest'
 
 // Import layout components
 import Header from './components/Header'
@@ -57,8 +61,8 @@ function App() {
                     <Route path="/weather-predictor" element={<WeatherPredictor />} />
                     <Route path="/phase3-demo" element={<Phase3Demo />} />
                     <Route path="/pricing" element={<Pricing />} />
-                    <Route path="/marketplace" element={<Marketplace />} />
-                    <Route path="/analytics" element={<Analytics />} />
+                    <Route path="/checkout" element={<Checkout />} />
+                    <Route path="/payment-success" element={<PaymentSuccess />} />
                     
                     {/* Dashboard routes - Protected */}
                     <Route path="/dashboard" element={
@@ -73,13 +77,18 @@ function App() {
                     } />
 
                     <Route path="/security" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requireAdmin={true}>
                         <SecurityDashboard />
                       </ProtectedRoute>
                     } />
                     <Route path="/ai-ethics" element={
-                      <ProtectedRoute>
+                      <ProtectedRoute requireAdmin={true}>
                         <AIEthicsDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/analytics" element={
+                      <ProtectedRoute requireAdmin={true}>
+                        <Analytics />
                       </ProtectedRoute>
                     } />
 
@@ -95,11 +104,28 @@ function App() {
                         <Settings />
                       </ProtectedRoute>
                     } />
+
+                    {/* ✅ Notifications Page route - Protected */}
+                    <Route path="/notifications" element={
+                      <ProtectedRoute>
+                        <NotificationsPage />
+                      </ProtectedRoute>
+                    } />
+
+                    {/* Debug Auth Page - Protected */}
+                    <Route path="/debug-auth" element={
+                      <ProtectedRoute>
+                        <DebugAuth />
+                      </ProtectedRoute>
+                    } />
+
+                    {/* Admin Test Page - No protection to see raw data */}
+                    <Route path="/admin-test" element={<AdminTest />} />
                     
                     {/* Admin routes - Admin Only */}
                     <Route path="/admin/dashboard" element={
                       <ProtectedRoute requireAdmin={true}>
-                        <AdminDashboard />
+                        <EnhancedAdminDashboard />
                       </ProtectedRoute>
                     } />
                     

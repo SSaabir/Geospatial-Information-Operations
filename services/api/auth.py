@@ -4,7 +4,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timezone
-from typing import Dict, Any, Generator, Optional
+from typing import Dict, Any, Generator, Optional, List
 import random
 import logging
 
@@ -466,3 +466,123 @@ async def change_password(password_data: ChangePassword, current_user: UserDB = 
 @auth_router.get("/verify-token")
 async def verify_token_endpoint(current_user: UserDB = Depends(get_current_user)):
     return {"valid": True, "user_id": current_user.id, "username": current_user.username}
+
+
+# ==================== ADMIN MANAGEMENT ENDPOINTS ====================
+
+@auth_router.get("/admin/users", response_model=List[UserResponse])
+async def get_all_users(current_user: UserDB = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Get all users (admin only)"""
+    try:
+        if not current_user.is_admin:
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+        
+        users = db.query(UserDB).order_by(UserDB.created_at.desc()).all()
+        return [UserResponse.from_orm(user) for user in users]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch users: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch users")
+
+
+@auth_router.put("/admin/users/{user_id}/promote")
+async def promote_to_admin(
+    user_id: int,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Promote a user to admin (admin only)"""
+    try:
+        if not current_user.is_admin:
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+        
+        user = db.query(UserDB).filter(UserDB.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if user.is_admin:
+            return {"message": "User is already an admin", "user": UserResponse.from_orm(user).dict()}
+        
+        user.is_admin = True
+        user.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(user)
+        
+        logger.info(f"User {user.username} (id={user.id}) promoted to admin by {current_user.username}")
+        
+        # Notify the promoted user
+        try:
+            notify(
+                subject="You've been promoted to Administrator",
+                message=f"Congratulations! You now have administrator privileges on the platform.",
+                level="info",
+                user_id=user.id,
+                metadata={"promoted_by": current_user.id}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send promotion notification")
+        
+        return {
+            "message": f"User {user.username} promoted to admin successfully",
+            "user": UserResponse.from_orm(user).dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to promote user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to promote user to admin")
+
+
+@auth_router.put("/admin/users/{user_id}/demote")
+async def demote_from_admin(
+    user_id: int,
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Demote a user from admin (admin only)"""
+    try:
+        if not current_user.is_admin:
+            raise HTTPException(status_code=403, detail="Admin privileges required")
+        
+        # Prevent self-demotion
+        if user_id == current_user.id:
+            raise HTTPException(status_code=400, detail="Cannot demote yourself")
+        
+        user = db.query(UserDB).filter(UserDB.id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if not user.is_admin:
+            return {"message": "User is not an admin", "user": UserResponse.from_orm(user).dict()}
+        
+        user.is_admin = False
+        user.updated_at = datetime.now(timezone.utc)
+        db.commit()
+        db.refresh(user)
+        
+        logger.info(f"User {user.username} (id={user.id}) demoted from admin by {current_user.username}")
+        
+        # Notify the demoted user
+        try:
+            notify(
+                subject="Administrator privileges removed",
+                message=f"Your administrator privileges have been removed.",
+                level="warning",
+                user_id=user.id,
+                metadata={"demoted_by": current_user.id}
+            )
+        except Exception:
+            logger.exception("Non-fatal: failed to send demotion notification")
+        
+        return {
+            "message": f"User {user.username} demoted from admin successfully",
+            "user": UserResponse.from_orm(user).dict()
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to demote user: {e}")
+        raise HTTPException(status_code=500, detail="Failed to demote user from admin")

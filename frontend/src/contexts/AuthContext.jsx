@@ -65,7 +65,10 @@ export const AuthProvider = ({ children }) => {
           setRefreshToken(savedRefreshToken);
           
           try {
-            setUser(JSON.parse(savedUser));
+            const parsedUser = JSON.parse(savedUser);
+            console.log('AuthContext - Loading user from localStorage:', parsedUser);
+            console.log('AuthContext - is_admin value:', parsedUser.is_admin, 'type:', typeof parsedUser.is_admin);
+            setUser(parsedUser);
             
             // Verify token is still valid
             await apiCall('/auth/verify-token', {
@@ -92,6 +95,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Error initializing auth:', error);
         clearAuthData();
       } finally {
+        console.log('AuthContext - Finished initialization, setting isLoading to false');
         setIsLoading(false);
       }
     };
@@ -153,12 +157,17 @@ export const AuthProvider = ({ children }) => {
       // Store tokens and user data
       setAccessToken(response.access_token);
       setRefreshToken(response.refresh_token);
+      
+      console.log('AuthContext - Login response user:', response.user);
+      console.log('AuthContext - is_admin in response:', response.user.is_admin, 'type:', typeof response.user.is_admin);
+      
       setUser(response.user);
 
       localStorage.setItem('access_token', response.access_token);
       localStorage.setItem('refresh_token', response.refresh_token);
       localStorage.setItem('user', JSON.stringify(response.user));
 
+      setIsLoading(false);
       return response.user;
     } catch (error) {
       console.error('Login error:', error);
@@ -271,6 +280,23 @@ export const AuthProvider = ({ children }) => {
     return order.indexOf(getTier()) >= order.indexOf(requiredTier);
   };
 
+
+  // Refresh user from backend and update context/localStorage
+  const refreshUser = async () => {
+    try {
+      const response = await apiCall('/auth/me', {
+        method: 'GET',
+      });
+      setUser(response);
+      localStorage.setItem('user', JSON.stringify(response));
+      return response;
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      clearAuthData();
+      return null;
+    }
+  };
+
   const value = {
     user,
     login,
@@ -285,6 +311,7 @@ export const AuthProvider = ({ children }) => {
     tier: getTier(),
     changeTier,
     isAtLeast,
+    refreshUser,
   };
 
   return (
