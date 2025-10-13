@@ -1,13 +1,15 @@
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 import logging
 import os
 from dotenv import load_dotenv
 import time
 import sqlalchemy.exc
+from pathlib import Path
 from middleware.event_logger import log_api_access
 # Import modules
 from models.user import Base, UserDB
@@ -98,6 +100,14 @@ app.include_router(security_router)
 app.include_router(ai_ethics_router)
 app.include_router(analytics_router)
 app.include_router(billing_router)
+
+# Mount static files for visualizations
+visualizations_dir = Path(__file__).parent / "visualizations"
+visualizations_dir.mkdir(exist_ok=True)  # Create directory if it doesn't exist
+
+# Mount the visualizations directory
+app.mount("/visualizations", StaticFiles(directory=str(visualizations_dir)), name="visualizations")
+logger.info(f"Mounted visualizations directory: {visualizations_dir}")
 
 
 # Custom exception handlers

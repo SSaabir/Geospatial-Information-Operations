@@ -94,6 +94,7 @@ class WorkflowResponse(BaseModel):
     status: str
     execution_time_ms: Optional[int] = None
     result: Optional[Dict[str, Any]] = None
+    visualizations: Optional[List[str]] = None  # NEW: List of visualization URLs
     error: Optional[str] = None
     timestamp: str
     user_id: Optional[int] = None
@@ -107,6 +108,7 @@ class WorkflowResponse(BaseModel):
                 "status": "completed",
                 "execution_time_ms": 2500,
                 "result": {"workflow_output": "..."},
+                "visualizations": ["/visualizations/session_123/correlation_scatter.png"],
                 "error": None,
                 "timestamp": "2025-09-27T10:30:00Z",
                 "user_id": 123
@@ -358,6 +360,25 @@ async def execute_workflow(
             except json.JSONDecodeError:
                 result_data = {"raw_output": workflow_result.get("final_output", "")}
             
+            # Extract visualization paths and convert to URLs
+            visualization_urls = []
+            if workflow_result.get("visualization_paths"):
+                vis_paths = workflow_result["visualization_paths"]
+                for key, path in vis_paths.items():
+                    if path and isinstance(path, str):
+                        # Convert absolute path to relative URL
+                        # Example: C:/path/services/visualizations/session_123/plot.png -> /visualizations/session_123/plot.png
+                        import os
+                        if "visualizations" in path:
+                            # Split by "visualizations" and get everything after it
+                            relative_path = path.split("visualizations")[-1].replace("\\", "/")
+                            # Ensure path starts with a single slash
+                            if not relative_path.startswith("/"):
+                                relative_path = "/" + relative_path
+                            url = f"/visualizations{relative_path}"
+                            logger.info(f"Converted visualization path: {path} -> {url}")
+                            visualization_urls.append(url)
+            
             # Consider report generation as part of full_summary
             if inferred_type == "full_summary":
                 metrics.reports_generated = (metrics.reports_generated or 0) + 1
@@ -374,6 +395,7 @@ async def execute_workflow(
                 status="completed",
                 execution_time_ms=execution_time,
                 result=result_data,
+                visualizations=visualization_urls if visualization_urls else None,
                 error=None,
                 timestamp=datetime.utcnow().isoformat(),
                 user_id=current_user.id

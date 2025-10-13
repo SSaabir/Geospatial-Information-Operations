@@ -317,40 +317,62 @@ const OrchestratorDashboard = () => {
       type: workflowType,
       data: null,
       analysis: null,
-      summary: null
+      summary: null,
+      report: null
     };
 
     try {
-      // Collector/tool outputs often put useful payloads in different keys. Check common locations.
-      const candidates = [
-        resolved.data,
-        resolved.data_view,
-        resolved.collected_data,
-        resolved.payload,
-        resolved.output,
-        resolved.rows,
-        resolved.result,
-      ];
-
-      for (const c of candidates) {
-        if (!c) continue;
-        const parsed = safeParseJSON(c);
-        // If parsed is an object with rows or is an array, consider it data
-        if (Array.isArray(parsed)) {
-          parsedResult.data = { rows: parsed };
-          break;
+      // NEW: Check for structured collector_data from orchestrator
+      if (resolved.collector_data) {
+        const collectorData = safeParseJSON(resolved.collector_data);
+        // Parse the nested structure from collector
+        if (collectorData && typeof collectorData === 'object') {
+          if (collectorData.data && collectorData.data.rows) {
+            // Structure: {data: {rows: [...]}}
+            parsedResult.data = collectorData.data;
+          } else if (collectorData.rows) {
+            // Structure: {rows: [...]}
+            parsedResult.data = collectorData;
+          } else if (Array.isArray(collectorData)) {
+            parsedResult.data = { rows: collectorData };
+          } else {
+            parsedResult.data = collectorData;
+          }
         }
-        if (parsed && typeof parsed === 'object') {
-          // If it already looks like {rows: [...]}
-          if (Array.isArray(parsed.rows)) {
-            parsedResult.data = parsed;
+      }
+      
+      // Fallback: Check common locations if collector_data not found
+      if (!parsedResult.data) {
+        const candidates = [
+          resolved.data,
+          resolved.data_view,
+          resolved.collected_data,
+          resolved.payload,
+          resolved.output,
+          resolved.rows,
+          resolved.result,
+        ];
+
+        for (const c of candidates) {
+          if (!c) continue;
+          const parsed = safeParseJSON(c);
+          // If parsed is an object with rows or is an array, consider it data
+          if (Array.isArray(parsed)) {
+            parsedResult.data = { rows: parsed };
             break;
           }
-          // If object has keys like datetime/temp, treat as single record
-          const keys = Object.keys(parsed);
-          if (keys.length > 0) {
-            parsedResult.data = parsed;
-            break;
+          if (parsed && typeof parsed === 'object') {
+            // If it already looks like {rows: [...]}
+            if (Array.isArray(parsed.rows)) {
+              parsedResult.data = parsed;
+              break;
+            }
+            // If object has keys like datetime/temp, treat as single record
+            const keys = Object.keys(parsed);
+            if (keys.length > 0) {
+              parsedResult.data = parsed;
+              break;
+            }
           }
         }
       }
@@ -360,6 +382,13 @@ const OrchestratorDashboard = () => {
       if (resolved.analysis_results) parsedResult.analysis = parsedResult.analysis || resolved.analysis_results;
       if (resolved.comprehensive_report) parsedResult.summary = safeParseJSON(resolved.comprehensive_report);
       if (!parsedResult.summary && resolved.summary) parsedResult.summary = safeParseJSON(resolved.summary);
+      
+      // NEW: Add report_content for LLM-generated reports
+      if (resolved.report_content) {
+        parsedResult.report = typeof resolved.report_content === 'string' 
+          ? resolved.report_content 
+          : JSON.stringify(resolved.report_content);
+      }
 
     } catch (e) {
       console.warn('Error parsing workflow result:', e);
@@ -1209,33 +1238,232 @@ const OrchestratorDashboard = () => {
 
           {parsedResult && (
             <div className="space-y-4">
-              {/* Current Weather Data */}
+              {/* Collector Data Table */}
               {parsedResult.data && (
                 <div>
                   <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <Cloud className="w-5 h-5 text-blue-600" />
-                    Current Weather Data
+                    <Database className="w-5 h-5 text-blue-600" />
+                    Collected Data
+                    {parsedResult.data.rows && (
+                      <span className="text-sm font-normal text-gray-500">
+                        ({parsedResult.data.rows.length} record{parsedResult.data.rows.length !== 1 ? 's' : ''})
+                      </span>
+                    )}
                   </h4>
-                  {renderWeatherData(parsedResult.data)}
+                  {renderWeatherData(parsedResult.data, result.query)}
                   
-                  {/* Weather Description */}
-                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mb-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Info className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <h5 className="font-medium text-blue-800 mb-1">Current Conditions</h5>
-                        <p className="text-blue-700 text-sm">{parsedResult.data.conditions}</p>
-                        <p className="text-blue-600 text-sm mt-1">{parsedResult.data.description}</p>
+                  {/* Weather Description (only if single record with conditions) */}
+                  {parsedResult.data.conditions && (
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 mb-4 mt-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Info className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <h5 className="font-medium text-blue-800 mb-1">Current Conditions</h5>
+                          <p className="text-blue-700 text-sm">{parsedResult.data.conditions}</p>
+                          <p className="text-blue-600 text-sm mt-1">{parsedResult.data.description}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
               {/* Trend Analysis */}
               {parsedResult.analysis && renderTrendAnalysis(parsedResult.analysis, query)}
+
+              {/* Generated Visualizations from Trend Agent */}
+              {result.visualizations && result.visualizations.length > 0 ? (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                    Generated Visualizations
+                    <span className="text-sm font-normal text-gray-500">({result.visualizations.length} chart{result.visualizations.length > 1 ? 's' : ''})</span>
+                  </h4>
+                  <div className="space-y-4">
+                    {result.visualizations.map((vizUrl, idx) => {
+                      // Extract filename from URL for display
+                      const filename = vizUrl.split('/').pop().replace(/\.(png|jpg|jpeg)$/, '');
+                      const displayName = filename
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, l => l.toUpperCase());
+                      
+                      const fullUrl = `http://localhost:8000${vizUrl}`;
+                      
+                      return (
+                        <div key={idx} className="bg-white rounded-xl border-2 border-purple-200 overflow-hidden hover:shadow-xl transition-all">
+                          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold text-white">{displayName}</p>
+                              <button
+                                onClick={() => window.open(fullUrl, '_blank')}
+                                className="text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-full transition-all flex items-center gap-1"
+                              >
+                                <Eye className="w-3 h-3" />
+                                Open Full Size
+                              </button>
+                            </div>
+                            <p className="text-xs text-purple-200 mt-1">Click image to expand • Path: {vizUrl}</p>
+                          </div>
+                          <div className="relative bg-gray-50 p-4">
+                            <div className="bg-white rounded-lg shadow-inner p-2">
+                              <img 
+                                src={fullUrl}
+                                alt={displayName}
+                                className="w-full h-auto max-h-[500px] object-contain cursor-pointer hover:scale-[1.02] transition-transform rounded"
+                                onClick={() => window.open(fullUrl, '_blank')}
+                                onError={(e) => {
+                                  console.error('Image load error:', fullUrl);
+                                  e.target.onerror = null;
+                                  e.target.parentElement.innerHTML = `
+                                    <div class="text-center p-8 bg-red-50 rounded-lg border-2 border-red-200">
+                                      <div class="text-red-500 text-2xl mb-3">⚠️</div>
+                                      <div class="text-red-700 font-semibold mb-2">Image Failed to Load</div>
+                                      <p class="text-sm text-red-600 mb-3">Path: ${vizUrl}</p>
+                                      <a href="${fullUrl}" target="_blank" class="inline-block text-sm bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
+                                        Try Opening Directly
+                                      </a>
+                                    </div>
+                                  `;
+                                }}
+                                onLoad={() => {
+                                  console.log('✅ Visualization loaded:', fullUrl);
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="bg-purple-50 px-4 py-2 border-t border-purple-100">
+                            <p className="text-xs text-purple-700 flex items-center gap-2">
+                              <Info className="w-3 h-3" />
+                              Auto-generated by Trend Analysis Agent
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : result.workflow_type === 'collect_analyze' && (
+                <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-yellow-800 mb-1">No Visualizations Generated</h4>
+                      <p className="text-sm text-yellow-700">
+                        The trend analysis completed but didn't generate visualizations. This might happen if:
+                      </p>
+                      <ul className="text-sm text-yellow-700 mt-2 list-disc list-inside space-y-1">
+                        <li>Insufficient data (need at least 2 records)</li>
+                        <li>Query doesn't match visualization patterns</li>
+                        <li>No numeric columns available for analysis</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* LLM-Generated Report (NEW) */}
+              {parsedResult.report && (
+                <div className="mb-6">
+                  <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    AI-Generated Weather Report
+                  </h4>
+                  <div className={`bg-white rounded-xl border-2 shadow-lg overflow-hidden ${parsedResult.report.includes('ERROR') ? 'border-red-300' : 'border-green-200'}`}>
+                    <div className={`px-4 py-3 ${parsedResult.report.includes('ERROR') ? 'bg-gradient-to-r from-red-600 to-rose-600' : 'bg-gradient-to-r from-green-600 to-emerald-600'}`}>
+                      <div className="flex items-center gap-2">
+                        <Bot className="w-5 h-5 text-white" />
+                        <span className="text-sm font-semibold text-white">
+                          {parsedResult.report.includes('ERROR') ? 'Report Generation Failed' : 'Generated by AI Analysis Agent'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-6 prose prose-sm max-w-none">
+                      {/* Check if it's an error message */}
+                      {parsedResult.report.includes('ERROR') || parsedResult.report.includes('Traceback') ? (
+                        <div className="space-y-3">
+                          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <XCircle className="w-5 h-5 text-red-600" />
+                              <span className="font-bold text-red-800">Error Details</span>
+                            </div>
+                            <pre className="text-xs text-red-700 whitespace-pre-wrap font-mono bg-red-100 p-3 rounded overflow-x-auto">
+                              {parsedResult.report}
+                            </pre>
+                          </div>
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-sm text-blue-800 font-medium mb-2">💡 Debugging Tips:</p>
+                            <ul className="text-xs text-blue-700 space-y-1 list-disc list-inside">
+                              <li>Check if the collector returned valid weather data</li>
+                              <li>Verify the trend analysis completed successfully</li>
+                              <li>Look for LLM API errors in the server logs</li>
+                              <li>Ensure GROQ_API_KEY is set in environment variables</li>
+                            </ul>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Simple Markdown-like rendering */
+                        <div className="space-y-4 text-gray-800">
+                          {parsedResult.report.split('\n').map((line, idx) => {
+                          // Headers
+                          if (line.startsWith('# ')) {
+                            return <h1 key={idx} className="text-3xl font-bold text-gray-900 mb-4">{line.slice(2)}</h1>;
+                          }
+                          if (line.startsWith('## ')) {
+                            return <h2 key={idx} className="text-2xl font-bold text-gray-800 mb-3 mt-6">{line.slice(3)}</h2>;
+                          }
+                          if (line.startsWith('### ')) {
+                            return <h3 key={idx} className="text-xl font-semibold text-gray-700 mb-2 mt-4">{line.slice(4)}</h3>;
+                          }
+                          
+                          // Bold text **text**
+                          if (line.includes('**')) {
+                            const parts = line.split('**');
+                            return (
+                              <p key={idx} className="mb-2">
+                                {parts.map((part, i) => i % 2 === 1 ? <strong key={i} className="font-bold">{part}</strong> : part)}
+                              </p>
+                            );
+                          }
+                          
+                          // Bullet points
+                          if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+                            return (
+                              <li key={idx} className="ml-4 mb-1 list-disc">
+                                {line.trim().slice(2)}
+                              </li>
+                            );
+                          }
+                          
+                          // Emoji lines (likely section headers)
+                          if (line.match(/^[🌤️🌡️💧🌧️☀️⛅🌥️☁️🌬️📊📈📉✅⚠️❌]/)) {
+                            return <p key={idx} className="text-lg font-semibold text-blue-700 mb-2 mt-4">{line}</p>;
+                          }
+                          
+                          // Empty lines
+                          if (line.trim() === '') {
+                            return <div key={idx} className="h-2"></div>;
+                          }
+                          
+                          // Regular paragraphs
+                          return <p key={idx} className="mb-2 leading-relaxed">{line}</p>;
+                        })}
+                      </div>
+                      )}
+                    </div>
+                    <div className={`px-4 py-3 border-t ${parsedResult.report.includes('ERROR') ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                      <p className={`text-xs flex items-center gap-2 ${parsedResult.report.includes('ERROR') ? 'text-red-700' : 'text-green-700'}`}>
+                        <Info className="w-3 h-3" />
+                        {parsedResult.report.includes('ERROR') 
+                          ? 'Error occurred during report generation - check details above'
+                          : 'This report was automatically generated using AI analysis of weather data'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Comprehensive Report */}
               {parsedResult.summary && (

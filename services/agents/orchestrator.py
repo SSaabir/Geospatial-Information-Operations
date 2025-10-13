@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 from enum import Enum
 import pandas as pd
+import numpy as np
 from langgraph.graph import StateGraph, END, START
 from typing import TypedDict
 from dotenv import load_dotenv
@@ -86,6 +87,7 @@ class EnhancedWorkflowState(TypedDict):
     collector_result: Optional[str]
     trend_result: Optional[str]
     report_result: Optional[str]
+    visualization_paths: Optional[Dict]
     
     # Security and ethics monitoring
     security_assessment: Optional[Dict]
@@ -214,9 +216,6 @@ class EnhancedOrchestrator:
         
         return base_plan
 
-# Initialize execution_time globally at the start of the workflow
-execution_time = 0.0
-
 def enhanced_start_node(state: EnhancedWorkflowState) -> EnhancedWorkflowState:
     """Enhanced workflow initialization with security and ethics setup"""
     state["step"] = "initializing"
@@ -274,8 +273,8 @@ def enhanced_collector_node(state: EnhancedWorkflowState) -> EnhancedWorkflowSta
             state["warnings"].append(f"Data collection failed: {str(e)}")
             collector_result = "No data collected due to error"
             
-        # Explicitly initialize execution_time if not already defined
-        execution_time = state.get("execution_time", 0.0)
+        # Calculate execution_time from start_time
+        execution_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"Execution time calculated: {execution_time:.2f}s")
         
         # Security validation of collected data
@@ -364,35 +363,123 @@ def enhanced_trend_analysis_node(state: EnhancedWorkflowState) -> EnhancedWorkfl
         start_date = dates[0] if len(dates) > 0 else None
         end_date = dates[1] if len(dates) > 1 else None
         
-        # Fetch data from the collector
-        collector_result = run_collector_agent(state["user_input"])
+        # Use data already collected by the collector node
+        collector_result = state.get("collector_result")
         if not collector_result:
-            raise ValueError("Collector agent returned no data")
+            logger.error("No collector result found in state")
+            raise ValueError("Collector agent returned no data - collector must run first")
 
         # Convert collector result to DataFrame
-        if isinstance(collector_result, str):
-            collector_result = json.loads(collector_result)
-        collector_df = pd.DataFrame(collector_result)
+        try:
+            if isinstance(collector_result, str):
+                collector_result = json.loads(collector_result)
+            
+            # Handle different data formats from collector
+            if isinstance(collector_result, list):
+                # Direct list of records
+                collector_df = pd.DataFrame(collector_result)
+            elif isinstance(collector_result, dict):
+                # Check for the standard collector response structure
+                if 'data' in collector_result:
+                    # Nested data structure: {"data": {"rows": [...], "summary": ...}, ...}
+                    data_obj = collector_result['data']
+                    if isinstance(data_obj, dict) and 'rows' in data_obj:
+                        collector_df = pd.DataFrame(data_obj['rows'])
+                    elif isinstance(data_obj, list):
+                        collector_df = pd.DataFrame(data_obj)
+                    else:
+                        collector_df = pd.DataFrame([data_obj])
+                elif 'rows' in collector_result:
+                    # Direct rows structure: {"rows": [...], ...}
+                    collector_df = pd.DataFrame(collector_result['rows'])
+                else:
+                    # Single record or unknown structure
+                    collector_df = pd.DataFrame([collector_result])
+            else:
+                raise ValueError(f"Unexpected collector result type: {type(collector_result)}")
+                
+        except Exception as e:
+            logger.error(f"Failed to parse collector result: {e}")
+            logger.error(f"Collector result preview: {str(collector_result)[:500]}")
+            raise ValueError(f"Could not convert collector result to DataFrame: {str(e)}")
 
         # Validate collector data
-        if collector_df.empty or 'datetime' not in collector_df.columns:
-            logger.error("collector_df is empty or missing the 'datetime' column")
-            raise ValueError("Invalid collector data: Ensure data is not empty and contains a 'datetime' column")
+        if collector_df.empty:
+            logger.error("collector_df is empty after conversion")
+            raise ValueError("Invalid collector data: DataFrame is empty")
+            
+        logger.info(f"📊 Collector data shape: {collector_df.shape}")
+        logger.info(f"📋 Collector columns: {list(collector_df.columns)}")
+        logger.info(f"🔍 First few rows:\n{collector_df.head(3)}")
 
-        # Debug log for collector data
-        logger.debug(f"Collector data preview: {collector_df.head()}")
-
+        # Check if datetime column is required based on query type
+        query_lower = state["user_input"].lower()
+        is_correlation_query = any(word in query_lower for word in ['correlation', 'correlate', 'relationship', 'association'])
+        
         # Ensure datetime column is properly formatted
-        collector_df['datetime'] = pd.to_datetime(collector_df['datetime'], errors='coerce')
-        collector_df.set_index('datetime', inplace=True)
+        if 'datetime' in collector_df.columns:
+            collector_df['datetime'] = pd.to_datetime(collector_df['datetime'], errors='coerce')
+            collector_df.set_index('datetime', inplace=True)
+            logger.info(f"✅ DateTime index set successfully")
+        else:
+            # Try to find alternative date columns
+            date_cols = [col for col in collector_df.columns if 'date' in col.lower() or 'time' in col.lower()]
+            if date_cols:
+                logger.info(f"Found alternative date column: {date_cols[0]}")
+                collector_df['datetime'] = pd.to_datetime(collector_df[date_cols[0]], errors='coerce')
+                collector_df.set_index('datetime', inplace=True)
+            elif is_correlation_query:
+                logger.info(f"ℹ️ DateTime not required for correlation analysis. Available columns: {list(collector_df.columns)}")
+            else:
+                logger.warning(f"⚠️ No 'datetime' column found. Available columns: {list(collector_df.columns)}")
+                logger.error("No datetime-like column found in collector data")
 
         # Pass the DataFrame to TrendAgent
         trend_agent = TrendAgent()
         trend_agent.df = collector_df
+        logger.info(f"✅ TrendAgent initialized with {len(collector_df)} records")
 
         # Run the TrendAgent analysis
         trend_result = trend_agent.analyze_trends(start_date=start_date, end_date=end_date)
         state["trend_result"] = trend_result
+        
+        # Generate visualizations using smart visualization method
+        try:
+            logger.info(f"📊 Generating visualizations...")
+            
+            # Use TrendAgent's smart visualization method
+            output_dir = f"visualizations/session_{state['session_id']}"
+            visualization_paths = trend_agent.generate_smart_visualizations(
+                user_query=state["user_input"],
+                start_date=start_date,
+                end_date=end_date,
+                output_dir=output_dir
+            )
+            
+            # Check if visualization was successful
+            if "error" in visualization_paths:
+                logger.warning(f"⚠️ Visualization error: {visualization_paths['error']}")
+                state["warnings"].append(f"Visualization: {visualization_paths['error']}")
+                state["visualization_paths"] = {}
+            elif "warning" in visualization_paths:
+                logger.info(f"ℹ️ Visualization warning: {visualization_paths['warning']}")
+                state["visualization_paths"] = {}
+            else:
+                state["visualization_paths"] = visualization_paths
+                logger.info(f"✅ Generated {len(visualization_paths)} visualizations")
+                
+                # Log the paths
+                for viz_name, viz_path in visualization_paths.items():
+                    logger.info(f"   📈 {viz_name}: {viz_path}")
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Visualization generation failed: {e}")
+            logger.error(f"Error details: {str(e)}", exc_info=True)
+            state["warnings"].append(f"Visualization generation failed: {str(e)}")
+            state["visualization_paths"] = {}
+        
+        # Calculate execution time
+        execution_time = (datetime.now() - start_time).total_seconds()
         
         # Responsible AI assessment
         if state.get("collector_result"):
@@ -498,7 +585,8 @@ def enhanced_report_generation_node(state: EnhancedWorkflowState) -> EnhancedWor
                 "session_id": state["session_id"],
                 "workflow_type": state["workflow_type"],
                 "priority": state["priority"],
-                "compliance_status": state["compliance_status"]
+                "compliance_status": state["compliance_status"],
+                "visualizations": state.get("visualization_paths", {})  # Add visualizations for report context
             }
         }
         
@@ -582,61 +670,74 @@ def enhanced_output_compilation_node(state: EnhancedWorkflowState) -> EnhancedWo
         
         # Generate final output based on workflow type
         if state["workflow_type"] == "data_view":
-            state["final_output"] = f"""
-🔍 **Data Collection Results**
-Session: {state['session_id']}
-Security Status: {state.get('security_assessment', {}).get('security_status', 'Unknown')}
-
-{state.get('collector_result', 'No data collected')}
-
----
-Execution Summary: {len(successful_agents)} agents completed successfully in {total_execution_time:.2f}s
-"""
+            collector_result = state.get('collector_result', 'No data collected')
+            
+            # Create a structured output with complete data (consistent with other workflows)
+            import json
+            state["final_output"] = json.dumps({
+                "session_id": state['session_id'],
+                "workflow_type": state["workflow_type"],
+                "security_status": state.get('security_assessment', {}).get('security_status', 'Unknown'),
+                "collector_data": collector_result,  # FULL DATA
+                "execution_time": total_execution_time,
+                "successful_agents": successful_agents
+            })
         
         elif state["workflow_type"] in ["collect_analyze", "analyze_trends"]:
-            state["final_output"] = f"""
-📊 **Weather Analysis Results**
-Session: {state['session_id']}
-Security Status: {state.get('security_assessment', {}).get('security_status', 'Unknown')}
-Ethics Status: {state.get('ethics_assessment', {}).get('ethics_level', 'Unknown')}
-
-**Data Collection:**
-{state.get('collector_result', 'No data collected')[:300]}...
-
-**Trend Analysis:**
-{state.get('trend_result', 'No trend analysis')[:300]}...
-
-**Compliance Summary:**
-- Security Validated: {state.get('security_assessment', {}).get('security_status') != 'HIGH_RISK'}
-- Ethics Reviewed: {state.get('ethics_assessment', {}).get('ethics_level') not in ['critical_violation']}
-- Overall Status: {state['compliance_status']}
-
----
-Execution Summary: {len(successful_agents)} agents completed successfully in {total_execution_time:.2f}s
-"""
+            # Include FULL collector result (not just preview) for frontend to parse
+            collector_result = state.get('collector_result', 'No data collected')
+            
+            # Format trend result safely
+            trend_result = state.get('trend_result', 'No trend analysis')
+            trend_preview = str(trend_result)[:500] if trend_result else 'No trend analysis'
+            
+            # Format visualizations
+            viz_paths = state.get('visualization_paths', {})
+            viz_section = ""
+            if viz_paths:
+                viz_section = "\n**📊 Visualizations Generated:**\n"
+                for viz_name, viz_path in viz_paths.items():
+                    viz_section += f"   📈 {viz_name}: {viz_path}\n"
+            
+            # Create a structured output with complete data
+            import json
+            state["final_output"] = json.dumps({
+                "session_id": state['session_id'],
+                "workflow_type": state["workflow_type"],
+                "security_status": state.get('security_assessment', {}).get('security_status', 'Unknown'),
+                "ethics_status": state.get('ethics_assessment', {}).get('ethics_level', 'Unknown'),
+                "collector_data": collector_result,  # FULL DATA
+                "trend_analysis": trend_preview,
+                "visualizations": viz_paths,
+                "compliance_status": state['compliance_status'],
+                "execution_time": total_execution_time,
+                "successful_agents": successful_agents
+            })
         
         elif state["workflow_type"] == "generate_report":
-            state["final_output"] = f"""
-📋 **Comprehensive Weather Report**
-Session: {state['session_id']}
-Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-**Report Content:**
-{state.get('report_result', 'No report generated')}
-
-**Quality Assurance:**
-- Security Validated: ✅ {state.get('security_assessment', {}).get('security_status', 'Unknown')}
-- Ethics Reviewed: ✅ {state.get('ethics_assessment', {}).get('ethics_level', 'Unknown')}
-- Compliance Status: {state['compliance_status']}
-
-**Execution Metrics:**
-- Total Time: {total_execution_time:.2f}s
-- Agents Used: {', '.join(successful_agents)}
-- Warnings: {len(state.get('warnings', []))}
-
----
-Generated by Enhanced Multi-Agent Weather Analysis System
-"""
+            # Include FULL data for report generation workflow
+            collector_result = state.get('collector_result', 'No data collected')
+            trend_result = state.get('trend_result', 'No trend analysis')
+            report_result = state.get('report_result', 'No report generated')
+            viz_paths = state.get('visualization_paths', {})
+            
+            # Create a structured output with complete data
+            import json
+            state["final_output"] = json.dumps({
+                "session_id": state['session_id'],
+                "workflow_type": state["workflow_type"],
+                "generated_at": datetime.now().isoformat(),
+                "security_status": state.get('security_assessment', {}).get('security_status', 'Unknown'),
+                "ethics_status": state.get('ethics_assessment', {}).get('ethics_level', 'Unknown'),
+                "collector_data": collector_result,  # FULL DATA
+                "trend_analysis": trend_result,
+                "report_content": report_result,
+                "visualizations": viz_paths,
+                "compliance_status": state['compliance_status'],
+                "execution_time": total_execution_time,
+                "successful_agents": successful_agents,
+                "warnings": state.get('warnings', [])
+            })
         
         else:
             # Fallback comprehensive output
@@ -786,6 +887,7 @@ def run_enhanced_orchestrator_workflow(user_input: str, user_context: Dict = Non
         collector_result=None,
         trend_result=None,
         report_result=None,
+        visualization_paths=None,
         security_assessment=None,
         ethics_assessment=None,
         security_alerts=None,

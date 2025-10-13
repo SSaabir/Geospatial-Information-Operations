@@ -539,6 +539,263 @@ class TrendAgent:
         
         return plot_paths
     
+    def generate_smart_visualizations(self, user_query: str, start_date=None, end_date=None, output_dir="visualizations"):
+        """
+        Intelligently generate visualizations based on query intent and data characteristics
+        
+        Args:
+            user_query (str): The user's natural language query
+            start_date (str): Start date in format 'YYYY-MM-DD'
+            end_date (str): End date in format 'YYYY-MM-DD'
+            output_dir (str): Directory to save visualizations
+            
+        Returns:
+            dict: Paths to generated visualizations with metadata
+        """
+        if self.df is None or self.df.empty:
+            return {"error": "No data available for visualization"}
+        
+        # Create output directory
+        os.makedirs(output_dir, exist_ok=True)
+        
+        query_lower = user_query.lower()
+        plot_paths = {}
+        
+        # Analyze query intent with priority ordering
+        # "trend between X and Y" should be correlation, not comparison
+        is_correlation = any(word in query_lower for word in ['correlation', 'correlate', 'relationship', 'association', 'connection', 'pattern'])
+        is_trend_over_time = any(phrase in query_lower for phrase in ['over time', 'temporal', 'time series', 'evolution'])
+        is_comparison = any(word in query_lower for word in ['compare', 'difference', 'versus', 'vs']) and 'by' in query_lower
+        is_distribution = any(word in query_lower for word in ['distribution', 'histogram', 'spread', 'range'])
+        
+        # Special case: "trend between X and Y" without time context = correlation
+        has_trend_between = 'trend' in query_lower and 'between' in query_lower
+        if has_trend_between and not is_trend_over_time:
+            is_correlation = True
+            is_comparison = False
+        
+        # Get data characteristics
+        has_datetime_index = isinstance(self.df.index, pd.DatetimeIndex)
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
+        categorical_cols = self.df.select_dtypes(include=['object', 'category', 'bool']).columns.tolist()
+        
+        # Extract mentioned features from query
+        mentioned_features = []
+        for col in self.df.columns:
+            if col.lower() in query_lower or col.lower().replace('_', ' ') in query_lower:
+                mentioned_features.append(col)
+        
+        try:
+            # 1. CORRELATION ANALYSIS
+            if is_correlation and len(numeric_cols) >= 2:
+                logger.info("📊 Generating correlation visualizations...")
+                
+                # Scatter plot for pairwise correlations
+                if len(mentioned_features) >= 2:
+                    x_col = mentioned_features[0]
+                    y_col = mentioned_features[1]
+                elif len(numeric_cols) >= 2:
+                    x_col = numeric_cols[0]
+                    y_col = numeric_cols[1]
+                
+                if x_col in numeric_cols and y_col in numeric_cols:
+                    plt.figure(figsize=(10, 6))
+                    valid_data = self.df[[x_col, y_col]].dropna()
+                    
+                    if len(valid_data) >= 2:
+                        plt.scatter(valid_data[x_col], valid_data[y_col], alpha=0.6, s=100, edgecolors='black')
+                        plt.xlabel(x_col.replace('_', ' ').title(), fontsize=12)
+                        plt.ylabel(y_col.replace('_', ' ').title(), fontsize=12)
+                        plt.title(f'Correlation Analysis: {x_col.title()} vs {y_col.title()}', fontsize=14, fontweight='bold')
+                        plt.grid(True, alpha=0.3)
+                        
+                        # Calculate and display correlation
+                        correlation = valid_data[x_col].corr(valid_data[y_col])
+                        plt.text(0.05, 0.95, f'Pearson Correlation: {correlation:.3f}', 
+                                transform=plt.gca().transAxes, 
+                                fontsize=11,
+                                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+                        
+                        # Add trend line
+                        z = np.polyfit(valid_data[x_col], valid_data[y_col], 1)
+                        p = np.poly1d(z)
+                        plt.plot(valid_data[x_col], p(valid_data[x_col]), "r--", alpha=0.8, linewidth=2, label='Trend Line')
+                        plt.legend()
+                        
+                        scatter_path = f'{output_dir}/correlation_scatter_{x_col}_{y_col}.png'
+                        plt.savefig(scatter_path, dpi=100, bbox_inches='tight')
+                        plt.close()
+                        
+                        plot_paths['correlation_scatter'] = scatter_path
+                        logger.info(f"✅ Generated scatter plot: {scatter_path}")
+                
+                # Correlation heatmap for all numeric columns
+                if len(numeric_cols) > 2:
+                    plt.figure(figsize=(12, 10))
+                    corr_data = self.df[numeric_cols].dropna()
+                    
+                    if len(corr_data) >= 2:
+                        corr_matrix = corr_data.corr()
+                        sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', center=0, fmt='.2f', 
+                                   square=True, linewidths=1, cbar_kws={"shrink": 0.8})
+                        plt.title('Correlation Matrix - All Numeric Features', fontsize=14, fontweight='bold')
+                        plt.tight_layout()
+                        
+                        heatmap_path = f'{output_dir}/correlation_heatmap_full.png'
+                        plt.savefig(heatmap_path, dpi=100, bbox_inches='tight')
+                        plt.close()
+                        
+                        plot_paths['correlation_heatmap'] = heatmap_path
+                        logger.info(f"✅ Generated heatmap: {heatmap_path}")
+            
+            # 2. TIME-SERIES TREND ANALYSIS
+            elif is_trend_over_time and has_datetime_index and len(numeric_cols) >= 1:
+                logger.info("📈 Generating time-series trend visualizations...")
+                
+                # Filter by date range if provided
+                filtered_df = self.filter_data_by_date(start_date, end_date)
+                if filtered_df is None or len(filtered_df) < 2:
+                    filtered_df = self.df
+                
+                # Generate trend plots for mentioned features or all numeric columns
+                features_to_plot = mentioned_features if mentioned_features else numeric_cols[:5]  # Limit to 5
+                
+                for col in features_to_plot:
+                    if col in numeric_cols:
+                        plt.figure(figsize=(14, 6))
+                        
+                        # Handle missing values
+                        plot_data = filtered_df[col].dropna()
+                        if len(plot_data) < 2:
+                            continue
+                        
+                        plt.plot(plot_data.index, plot_data.values, linewidth=2, marker='o', markersize=4)
+                        plt.xlabel('Date', fontsize=12)
+                        plt.ylabel(col.replace('_', ' ').title(), fontsize=12)
+                        plt.title(f'Trend Analysis: {col.replace("_", " ").title()} Over Time', fontsize=14, fontweight='bold')
+                        plt.grid(True, alpha=0.3)
+                        plt.xticks(rotation=45)
+                        
+                        # Add trend line
+                        x_numeric = np.arange(len(plot_data))
+                        z = np.polyfit(x_numeric, plot_data.values, 1)
+                        p = np.poly1d(z)
+                        plt.plot(plot_data.index, p(x_numeric), "r--", alpha=0.8, linewidth=2, label='Trend Line')
+                        plt.legend()
+                        
+                        plt.tight_layout()
+                        
+                        trend_path = f'{output_dir}/trend_{col}.png'
+                        plt.savefig(trend_path, dpi=100, bbox_inches='tight')
+                        plt.close()
+                        
+                        plot_paths[f'trend_{col}'] = trend_path
+                        logger.info(f"✅ Generated trend plot: {trend_path}")
+            
+            # 3. COMPARISON / CATEGORICAL ANALYSIS
+            elif is_comparison or (len(categorical_cols) > 0 and len(numeric_cols) > 0):
+                logger.info("📊 Generating comparison visualizations...")
+                
+                # Find best categorical and numeric columns
+                cat_col = categorical_cols[0] if categorical_cols else None
+                num_col = mentioned_features[0] if mentioned_features and mentioned_features[0] in numeric_cols else numeric_cols[0]
+                
+                if cat_col and num_col:
+                    plt.figure(figsize=(12, 6))
+                    
+                    # Group by category and calculate statistics
+                    grouped = self.df.groupby(cat_col)[num_col].agg(['mean', 'std', 'count'])
+                    grouped = grouped[grouped['count'] > 0]  # Remove empty groups
+                    
+                    if len(grouped) > 0:
+                        # Bar plot with error bars
+                        ax = grouped['mean'].plot(kind='bar', yerr=grouped['std'], 
+                                                 color='skyblue', edgecolor='black', 
+                                                 capsize=5, error_kw={'linewidth': 2})
+                        plt.xlabel(cat_col.replace('_', ' ').title(), fontsize=12)
+                        plt.ylabel(f'Average {num_col.replace("_", " ").title()}', fontsize=12)
+                        plt.title(f'Comparison: {num_col.title()} by {cat_col.title()}', fontsize=14, fontweight='bold')
+                        plt.xticks(rotation=45, ha='right')
+                        plt.grid(True, alpha=0.3, axis='y')
+                        
+                        # Add value labels on bars
+                        for i, (idx, row) in enumerate(grouped.iterrows()):
+                            ax.text(i, row['mean'], f'{row["mean"]:.1f}', 
+                                   ha='center', va='bottom', fontsize=10)
+                        
+                        plt.tight_layout()
+                        
+                        comparison_path = f'{output_dir}/comparison_{num_col}_by_{cat_col}.png'
+                        plt.savefig(comparison_path, dpi=100, bbox_inches='tight')
+                        plt.close()
+                        
+                        plot_paths['comparison'] = comparison_path
+                        logger.info(f"✅ Generated comparison plot: {comparison_path}")
+            
+            # 4. DISTRIBUTION ANALYSIS
+            elif is_distribution and len(numeric_cols) >= 1:
+                logger.info("📊 Generating distribution visualizations...")
+                
+                features_to_plot = mentioned_features if mentioned_features else numeric_cols[:3]
+                
+                for col in features_to_plot:
+                    if col in numeric_cols:
+                        plt.figure(figsize=(12, 6))
+                        
+                        plot_data = self.df[col].dropna()
+                        if len(plot_data) < 2:
+                            continue
+                        
+                        # Histogram with KDE
+                        plt.subplot(1, 2, 1)
+                        plt.hist(plot_data, bins=30, color='skyblue', edgecolor='black', alpha=0.7)
+                        plt.xlabel(col.replace('_', ' ').title(), fontsize=11)
+                        plt.ylabel('Frequency', fontsize=11)
+                        plt.title(f'Distribution: {col.title()}', fontsize=12, fontweight='bold')
+                        plt.grid(True, alpha=0.3, axis='y')
+                        
+                        # Box plot
+                        plt.subplot(1, 2, 2)
+                        plt.boxplot(plot_data, vert=True)
+                        plt.ylabel(col.replace('_', ' ').title(), fontsize=11)
+                        plt.title(f'Box Plot: {col.title()}', fontsize=12, fontweight='bold')
+                        plt.grid(True, alpha=0.3, axis='y')
+                        
+                        plt.tight_layout()
+                        
+                        dist_path = f'{output_dir}/distribution_{col}.png'
+                        plt.savefig(dist_path, dpi=100, bbox_inches='tight')
+                        plt.close()
+                        
+                        plot_paths[f'distribution_{col}'] = dist_path
+                        logger.info(f"✅ Generated distribution plot: {dist_path}")
+            
+            # 5. DEFAULT: GENERAL OVERVIEW
+            else:
+                logger.info("📊 Generating general overview visualizations...")
+                
+                # Simple visualization based on what's available
+                if len(numeric_cols) >= 2:
+                    # Scatter matrix or correlation
+                    return self.generate_smart_visualizations(
+                        "correlation analysis", start_date, end_date, output_dir
+                    )
+                elif len(numeric_cols) >= 1:
+                    # Distribution
+                    return self.generate_smart_visualizations(
+                        "distribution analysis", start_date, end_date, output_dir
+                    )
+        
+        except Exception as e:
+            logger.error(f"❌ Visualization generation error: {e}", exc_info=True)
+            return {"error": f"Visualization generation failed: {str(e)}"}
+        
+        if not plot_paths:
+            logger.warning("⚠️ No visualizations generated - insufficient data or unclear intent")
+            return {"warning": "No visualizations generated - data may be insufficient or query unclear"}
+        
+        return plot_paths
+    
     def get_data_info(self):
         """
         Get basic information about the loaded dataset and trigger data collection if needed

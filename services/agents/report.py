@@ -10,6 +10,18 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 import sqlalchemy
 from sqlalchemy import create_engine
+from langchain_groq import ChatGroq
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Initialize LLM for intelligent report generation
+llm = ChatGroq(
+    model="meta-llama/llama-4-scout-17b-16e-instruct",
+    groq_api_key=os.getenv("GROQ_API_KEY"),
+    temperature=0.3  # Lower temperature for more factual, consistent reports
+)
 
 # Database configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg2://postgres:ElDiabloX32@localhost:5432/PstDB")
@@ -186,37 +198,118 @@ def generate_pdf_report(summary_text: str, filename: str = None) -> str:
     except Exception as e:
         return f"❌ PDF Generation Error: {str(e)}"
 
+def generate_llm_report(user_query: str, collector_data: str, trend_analysis: str, visualizations: dict = None) -> str:
+    """
+    Use LLM to generate an intelligent, natural language report from raw data.
+    This handles ANY type of data - weather, ethics, or whatever the collector returned.
+    """
+    try:
+        # Prepare context for the LLM
+        prompt = f"""You are a professional data analyst creating a comprehensive report.
+
+USER QUERY: {user_query}
+
+COLLECTED DATA:
+{collector_data[:3000]}  # Limit to prevent token overflow
+
+TREND ANALYSIS:
+{trend_analysis[:2000] if trend_analysis else "No trend analysis available"}
+
+{"VISUALIZATIONS: " + str(len(visualizations)) + " charts were generated" if visualizations else ""}
+
+INSTRUCTIONS:
+1. Analyze the collected data and provide a clear, professional summary
+2. If the data is weather-related, provide temperature, humidity, rainfall insights
+3. If the data is about other topics, analyze what was actually returned
+4. Include key statistics and trends
+5. Provide actionable insights and recommendations
+6. Use clear sections with emojis for readability
+7. Keep the report concise (300-500 words)
+8. If there's an error in the data, explain it clearly and suggest how to fix the query
+
+REPORT FORMAT:
+📊 ANALYSIS REPORT
+==================
+
+📋 SUMMARY:
+[Brief overview of what data was analyzed]
+
+🔍 KEY FINDINGS:
+[Main insights from the data]
+
+📈 TRENDS & PATTERNS:
+[Notable trends if any]
+
+💡 RECOMMENDATIONS:
+[Actionable suggestions based on the analysis]
+
+Generate the report now:"""
+
+        # Call LLM to generate report
+        response = llm.invoke(prompt)
+        
+        # Extract content from response
+        if hasattr(response, 'content'):
+            report = response.content
+        else:
+            report = str(response)
+        
+        # Add metadata footer
+        report += f"\n\n---\n🎯 Query Addressed: {user_query}\n"
+        report += f"📅 Analysis Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        
+        return report
+        
+    except Exception as e:
+        # NO FALLBACK - Show the actual error
+        import traceback
+        error_details = traceback.format_exc()
+        return f"❌ LLM REPORT GENERATION ERROR\n\n{str(e)}\n\nFull traceback:\n{error_details}"
+
 def generate_summary_report(input_data: dict) -> str:
     """
     Generate a summary report based on trend analysis results.
     This is the main function called by the orchestrator.
+    NOW USES LLM FOR INTELLIGENT REPORT GENERATION!
     """
     try:
         user_query = input_data.get("user_query", "")
         trend_analysis = input_data.get("trend_analysis", "")
         collector_data = input_data.get("collector_data", "")
+        visualizations = input_data.get("session_metadata", {}).get("visualizations", {})
         
-        if not trend_analysis or trend_analysis == "No trend analysis available":
-            # Fall back to original behavior if no trend data
-            return run_report_agent(user_query, generate_pdf=False)
+        # DEBUG: Print what we received
+        print(f"\n{'='*60}")
+        print(f"🔍 REPORT GENERATION DEBUG")
+        print(f"{'='*60}")
+        print(f"📊 Collector Data Type: {type(collector_data)}")
+        print(f"📊 Collector Data Length: {len(str(collector_data))}")
+        print(f"📊 Collector Data Preview: {str(collector_data)[:200]}...")
+        print(f"📈 Trend Analysis Type: {type(trend_analysis)}")
+        print(f"📈 Trend Analysis: {str(trend_analysis)[:200]}...")
+        print(f"📊 Visualizations: {visualizations}")
+        print(f"{'='*60}\n")
         
-        # Parse trend analysis (it's likely a JSON string)
-        import json
-        try:
-            if isinstance(trend_analysis, str):
-                trend_data = json.loads(trend_analysis)
-            else:
-                trend_data = trend_analysis
-        except:
-            # If not JSON, treat as raw text
-            trend_data = {"raw_analysis": str(trend_analysis)}
+        # Convert trend_analysis to string if it's a dict
+        if isinstance(trend_analysis, dict):
+            trend_analysis = json.dumps(trend_analysis, indent=2)
         
-        # Generate summary based on trend analysis
-        summary = generate_trend_summary(trend_data, user_query)
-        return summary
+        # Convert collector_data to string if it's a dict
+        if isinstance(collector_data, dict):
+            collector_data = json.dumps(collector_data, indent=2)
+        
+        # Use LLM to generate intelligent report
+        print("🤖 Generating LLM-powered report...")
+        llm_report = generate_llm_report(user_query, collector_data, trend_analysis, visualizations)
+        
+        # Return the LLM report directly (no fallback!)
+        return llm_report
         
     except Exception as e:
-        return f"❌ Summary Report Error: {str(e)}"
+        # NO FALLBACK - Show the actual error
+        import traceback
+        error_details = traceback.format_exc()
+        return f"❌ SUMMARY REPORT ERROR\n\n{str(e)}\n\nFull traceback:\n{error_details}"
 
 def generate_trend_summary(trend_data: dict, user_query: str) -> str:
     """Generate a user-friendly, non-technical summary from trend analysis data."""
@@ -528,7 +621,7 @@ try:
         if groq_api_key:
             llm = ChatGroq(
                 groq_api_key=groq_api_key,
-                model_name="llama3-8b-8192",
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
                 temperature=0
             )
         else:

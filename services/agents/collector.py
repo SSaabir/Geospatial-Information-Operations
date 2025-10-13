@@ -744,7 +744,45 @@ class collectorState(TypedDict):
 graph = StateGraph(collectorState)
 
 def collector_node(state: collectorState) -> collectorState:
-    result = collector.run(state["input"])
+    """
+    Enhanced collector that prioritizes database queries.
+    Always attempts to query the database first before using external APIs.
+    """
+    import json
+    
+    query = state["input"]
+    
+    # First, try to get data from the database
+    print("🔍 Checking database first...")
+    try:
+        # Attempt database query for any query type
+        db_result = query_postgresql_tool.invoke(query)
+        
+        # Parse the result to check if we got valid data
+        try:
+            db_data = json.loads(db_result)
+            
+            # Check if we got meaningful data from database
+            if not db_data.get("error") and db_data.get("row_count", 0) > 0:
+                print(f"✅ Found {db_data.get('row_count')} records in database")
+                state["output"] = db_result
+                return state
+            else:
+                print(f"⚠️ No data in database or query error: {db_data.get('error', 'No results')}")
+        except json.JSONDecodeError:
+            # If result is not JSON, it might still be valid data
+            if db_result and len(db_result) > 50:
+                print("✅ Retrieved data from database")
+                state["output"] = db_result
+                return state
+            print("⚠️ Database query returned no usable data")
+                
+    except Exception as e:
+        print(f"⚠️ Database query attempt failed: {str(e)}")
+    
+    # If database didn't return useful data, fall back to the agent with all tools
+    print("🔄 Database empty or no results - using collector agent with external tools...")
+    result = collector.run(query)
 
     if isinstance(result, dict):
         state["title"] = result.get("title")
