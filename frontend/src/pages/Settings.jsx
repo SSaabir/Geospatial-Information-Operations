@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-
-const API_BASE_URL = "http://localhost:8000"; // ← change if needed
+import { useAuth } from "../contexts/AuthContext";
 
 export default function Settings() {
+  const { user, updateProfile, changeTier, changePassword, logout, apiCall, isLoading: authLoading } = useAuth();
+  
   // =======================
   // USER DATA
   // =======================
@@ -19,49 +20,39 @@ export default function Settings() {
   const [currentAvatar, setCurrentAvatar] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "" });
-
-  // =======================
-  // AUTH TOKEN
-  // =======================
-  const token = localStorage.getItem("token"); // adjust to your auth storage
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
 
   // =======================
   // FETCH PROFILE FROM BACKEND
   // =======================
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        if (!res.ok) throw new Error("Failed to fetch profile");
-        const data = await res.json();
+    if (user) {
+      setUserData({
+        name: user.full_name || "",
+        email: user.email || "",
+        username: user.username || "",
+        tier: user.tier || "free",
+        lastLogin: user.last_login || "",
+        avatar: user.avatar_url || null,
+      });
 
-        setUserData({
-          name: data.full_name,
-          email: data.email,
-          username: data.username || "",
-          tier: data.tier,
-          lastLogin: data.last_login || "",
-          avatar: data.avatar_url || null,
-        });
-
-        setOriginalData({
-          name: data.full_name,
-          email: data.email,
-          username: data.username || "",
-          avatar: data.avatar_url || null,
-        });
-        setCurrentAvatar(data.avatar_url || null);
-      } catch (err) {
-        showToast(err.message, "error");
-      }
-    };
-
-    fetchProfile();
-  }, [token]);
+      setOriginalData({
+        name: user.full_name || "",
+        email: user.email || "",
+        username: user.username || "",
+        avatar: user.avatar_url || null,
+      });
+      setCurrentAvatar(user.avatar_url || null);
+    }
+  }, [user]);
 
   // =======================
   // HELPERS
@@ -123,45 +114,41 @@ export default function Settings() {
   // =======================
   const handleProfileSave = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/me`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          full_name: userData.name,
-          email: userData.email,
-          username: userData.username,
-          avatar_url: currentAvatar,
-          tier: userData.tier,
-        }),
+      const result = await updateProfile({
+        full_name: userData.name,
+        email: userData.email,
+        username: userData.username,
+        avatar_url: currentAvatar,
       });
 
-      if (!res.ok) throw new Error("Failed to update profile");
-      const updated = await res.json();
+      if (result.success) {
+        setUserData({
+          ...userData,
+          name: result.user.full_name,
+          email: result.user.email,
+          username: result.user.username || "",
+          avatar: result.user.avatar_url || null,
+          tier: result.user.tier,
+        });
 
-      setUserData({
-        ...userData,
-        name: updated.full_name,
-        email: updated.email,
-        username: updated.username || "",
-        avatar: updated.avatar_url || null,
-        tier: updated.tier,
-      });
+        setOriginalData({
+          name: result.user.full_name,
+          email: result.user.email,
+          username: result.user.username || "",
+          avatar: result.user.avatar_url || null,
+        });
 
-      setOriginalData({
-        name: updated.full_name,
-        email: updated.email,
-        username: updated.username || "",
-        avatar: updated.avatar_url || null,
-      });
-
-      setEditMode(false);
-      showToast("Profile updated successfully! ✅", "success");
+        setEditMode(false);
+        showToast("Profile updated successfully! ✅", "success");
+      } else {
+        showToast(result.error, "error");
+      }
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -170,25 +157,69 @@ export default function Settings() {
   // =======================
   const handleTierChange = async (e) => {
     const newTier = e.target.value;
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/me`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          tier: newTier,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to update tier");
-      const updated = await res.json();
-
-      setUserData((prev) => ({ ...prev, tier: updated.tier }));
-      showToast(`Tier updated to ${updated.tier.toUpperCase()}! 🚀`, "success");
+      const result = await changeTier(newTier);
+      
+      if (result.success) {
+        setUserData((prev) => ({ ...prev, tier: result.user.tier }));
+        showToast(`Tier updated to ${result.user.tier.toUpperCase()}! 🚀`, "success");
+      } else {
+        showToast(result.error, "error");
+      }
     } catch (err) {
       showToast(err.message, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // =======================
+  // CHANGE PASSWORD
+  // =======================
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      showToast("New passwords don't match!", "error");
+      return;
+    }
+    
+    if (passwordData.newPassword.length < 6) {
+      showToast("New password must be at least 6 characters long!", "error");
+      return;
+    }
+    
+    setIsLoading(true);
+    try {
+      const result = await changePassword({
+        current_password: passwordData.currentPassword,
+        new_password: passwordData.newPassword,
+      });
+      
+      if (result.success) {
+        showToast("Password changed successfully! 🔒", "success");
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
+        setShowPasswordSection(false);
+      } else {
+        showToast(result.error, "error");
+      }
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -208,6 +239,30 @@ export default function Settings() {
     userData.email !== originalData.email ||
     userData.username !== originalData.username ||
     currentAvatar !== originalData.avatar;
+
+  // Show loading state if auth is still loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen p-10 bg-gradient-to-br from-[#F0F0F7] via-[#E0DCEF] to-[#9481E3] flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
+          <p className="text-xl">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no user data
+  if (!user) {
+    return (
+      <div className="min-h-screen p-10 bg-gradient-to-br from-[#F0F0F7] via-[#E0DCEF] to-[#9481E3] flex items-center justify-center">
+        <div className="text-center text-white">
+          <h1 className="text-4xl font-semibold drop-shadow mb-4">⚙️ Settings</h1>
+          <p className="text-xl">Please log in to access your settings.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-10 bg-gradient-to-br from-[#F0F0F7] via-[#E0DCEF] to-[#9481E3]">
@@ -262,12 +317,18 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="flex gap-4">
+                <div className="flex gap-4 flex-wrap">
                   <button
                     onClick={enterEditMode}
                     className="px-8 py-3 bg-gradient-to-br from-[#9481E3] to-[#C7BCE6] text-white rounded-lg font-semibold hover:shadow-lg transition-all"
                   >
                     ✏️ Edit Profile
+                  </button>
+                  <button
+                    onClick={logout}
+                    className="px-8 py-3 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition-all"
+                  >
+                    🚪 Logout
                   </button>
                 </div>
               </div>
@@ -346,16 +407,24 @@ export default function Settings() {
                       <button
                         type="submit"
                         className={`px-8 py-3 bg-gradient-to-br from-[#9481E3] to-[#C7BCE6] text-white rounded-lg font-semibold hover:shadow-lg transition-all ${
-                          !hasChanges && "opacity-50 cursor-not-allowed"
+                          (!hasChanges || isLoading) && "opacity-50 cursor-not-allowed"
                         }`}
-                        disabled={!hasChanges}
+                        disabled={!hasChanges || isLoading}
                       >
-                        💾 Save Changes
+                        {isLoading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                            Saving...
+                          </>
+                        ) : (
+                          "💾 Save Changes"
+                        )}
                       </button>
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        className="px-8 py-3 bg-[#E0DCEF] text-purple-800 rounded-lg font-semibold hover:bg-[#C7BCE6]"
+                        className="px-8 py-3 bg-[#E0DCEF] text-purple-800 rounded-lg font-semibold hover:bg-[#C7BCE6] disabled:opacity-50"
+                        disabled={isLoading}
                       >
                         ✖️ Cancel
                       </button>
@@ -372,16 +441,109 @@ export default function Settings() {
                     <select
                       value={userData.tier}
                       onChange={handleTierChange}
-                      className="w-full p-4 border-2 border-[#E0DCEF] rounded-lg bg-[#F0F0F7] focus:outline-none focus:border-[#9481E3] focus:bg-white"
+                      className="w-full p-4 border-2 border-[#E0DCEF] rounded-lg bg-[#F0F0F7] focus:outline-none focus:border-[#9481E3] focus:bg-white disabled:opacity-50"
+                      disabled={isLoading}
                     >
                       <option value="free">Free - Basic features for getting started</option>
                       <option value="researcher">Researcher - Advanced tools for research</option>
                       <option value="professional">Professional - Full access with premium support</option>
                     </select>
                     <div className="text-gray-500 text-sm italic mt-2">
-                      Choose the tier that best fits your needs
+                      {isLoading ? "Updating tier..." : "Choose the tier that best fits your needs"}
                     </div>
                   </div>
+                </div>
+
+                {/* Password Change Section */}
+                <div className="border-t border-gray-300 pt-10">
+                  <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">🔒 Security Settings</h3>
+                  
+                  {!showPasswordSection ? (
+                    <div className="text-center">
+                      <button
+                        onClick={() => setShowPasswordSection(true)}
+                        className="px-8 py-3 bg-gradient-to-br from-[#9481E3] to-[#C7BCE6] text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+                      >
+                        🔑 Change Password
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handlePasswordSubmit} className="space-y-6">
+                      <div>
+                        <label className="block text-gray-700 font-semibold mb-2">Current Password *</label>
+                        <input
+                          type="password"
+                          name="currentPassword"
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordChange}
+                          className="w-full p-4 border-2 border-[#E0DCEF] rounded-lg bg-[#F0F0F7] focus:outline-none focus:border-[#9481E3] focus:bg-white"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 font-semibold mb-2">New Password *</label>
+                        <input
+                          type="password"
+                          name="newPassword"
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChange}
+                          className="w-full p-4 border-2 border-[#E0DCEF] rounded-lg bg-[#F0F0F7] focus:outline-none focus:border-[#9481E3] focus:bg-white"
+                          required
+                          minLength={6}
+                        />
+                        <div className="text-gray-500 text-sm italic mt-1">
+                          Password must be at least 6 characters long
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-gray-700 font-semibold mb-2">Confirm New Password *</label>
+                        <input
+                          type="password"
+                          name="confirmPassword"
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChange}
+                          className="w-full p-4 border-2 border-[#E0DCEF] rounded-lg bg-[#F0F0F7] focus:outline-none focus:border-[#9481E3] focus:bg-white"
+                          required
+                        />
+                      </div>
+
+                      <div className="flex gap-4 flex-wrap">
+                        <button
+                          type="submit"
+                          className={`px-8 py-3 bg-gradient-to-br from-[#9481E3] to-[#C7BCE6] text-white rounded-lg font-semibold hover:shadow-lg transition-all ${
+                            isLoading && "opacity-50 cursor-not-allowed"
+                          }`}
+                          disabled={isLoading}
+                        >
+                          {isLoading ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Updating...
+                            </>
+                          ) : (
+                            "🔒 Update Password"
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPasswordSection(false);
+                            setPasswordData({
+                              currentPassword: "",
+                              newPassword: "",
+                              confirmPassword: "",
+                            });
+                          }}
+                          className="px-8 py-3 bg-[#E0DCEF] text-purple-800 rounded-lg font-semibold hover:bg-[#C7BCE6] disabled:opacity-50"
+                          disabled={isLoading}
+                        >
+                          ✖️ Cancel
+                        </button>
+                      </div>
+                    </form>
+                  )}
                 </div>
               </div>
             )}

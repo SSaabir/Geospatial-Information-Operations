@@ -102,6 +102,21 @@ const ClimateHomepage = () => {
             
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+              <Link 
+                to="/chat" 
+                className="px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2" 
+                style={{backgroundColor: '#A294F9'}}
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span>Chat with AI</span>
+              </Link>
+              <Link 
+                to="/weather-predictor" 
+                className="px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl border-2 flex items-center space-x-2" 
+                style={{borderColor: '#CDC1FF', color: '#6B46C1', backgroundColor: 'white'}}
+              >
+                <FileText className="w-5 h-5" />
+                <span>Prediction Form</span>
               <Link to="/chat" className="px-8 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2" style={{backgroundColor: '#A294F9'}}>
                 <MessageSquare className="w-5 h-5" />
                 <span>Chat with AI</span>
@@ -284,6 +299,32 @@ const ClimateHomepage = () => {
         </div>
       </section>
 
+      {/* Call to Action Section */}
+      <section className="py-20 px-4" style={{backgroundColor: '#E5D9F2'}}>
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-4xl font-bold mb-6 text-gray-800">Ready to Get Started?</h2>
+          <p className="text-xl text-gray-600 mb-12">Try our weather prediction form to generate accurate forecasts for your location</p>
+          <div className="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-6">
+            <Link 
+              to="/weather-predictor" 
+              className="px-10 py-4 rounded-xl text-white font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl flex items-center space-x-2" 
+              style={{backgroundColor: '#A294F9'}}
+            >
+              <FileText className="w-5 h-5" />
+              <span>Start Weather Prediction</span>
+            </Link>
+            <Link 
+              to="/chat" 
+              className="px-10 py-4 rounded-xl font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl border-2 flex items-center space-x-2" 
+              style={{borderColor: '#A294F9', color: '#6B46C1', backgroundColor: 'white'}}
+            >
+              <MessageSquare className="w-5 h-5" />
+              <span>Ask AI Assistant</span>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section className="py-20 px-4 bg-white">
         <div className="max-w-7xl mx-auto">
@@ -313,8 +354,16 @@ const ClimateHomepage = () => {
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{backgroundColor: '#A294F9'}}>
                 <FileText className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-xl font-semibold mb-4 text-gray-800">Custom Reports</h3>
-              <p className="text-gray-600">Generate detailed reports tailored to your specific research needs and data requirements.</p>
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">Weather Predictions</h3>
+              <p className="text-gray-600 mb-6">Generate detailed weather predictions and forecasts tailored to your specific location and requirements.</p>
+              <Link 
+                to="/weather-predictor" 
+                className="inline-flex items-center px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl" 
+                style={{backgroundColor: '#A294F9'}}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Try Prediction Form
+              </Link>
             </div>
           </div>
         </div>

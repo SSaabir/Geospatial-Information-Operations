@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Cloud, MapPin, Bell, Settings, Search, Menu, LogOut, User, Shield, Brain, ChevronDown, Home, BarChart3, Bot, X } from 'lucide-react';
 import NotificationPanel from './NotificationPanel';
@@ -56,14 +57,14 @@ export default function Header() {
           {/* Navigation Links */}
           <nav className="hidden lg:flex items-center space-x-1">
             {navigationItems.map((item) => (
-              <a
+              <Link
                 key={item.name}
-                href={item.href}
+                to={item.href}
                 className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 group"
               >
                 <item.icon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 <span className="font-medium">{item.name}</span>
-              </a>
+              </Link>
             ))}
             {user?.is_admin && (
               <a
@@ -72,7 +73,7 @@ export default function Header() {
               >
                 <Settings className="w-4 h-4" />
                 <span className="font-medium">Admin</span>
-              </a>
+              </Link>
             )}
           </nav>
 
@@ -115,20 +116,22 @@ export default function Header() {
                         <p className="text-sm text-gray-500">{user?.email}</p>
                       </div>
                       <div className="py-2">
-                        <a
-                          href="#"
+                        <Link
+                          to="/settings"
                           className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                          onClick={() => setIsDropdownOpen(false)}
                         >
                           <User className="w-4 h-4" />
                           <span>Profile Settings</span>
-                        </a>
-                        <a
-                          href="#"
+                        </Link>
+                        <Link
+                          to="/settings"
                           className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-gray-50 transition-colors"
+                          onClick={() => setIsDropdownOpen(false)}
                         >
                           <Settings className="w-4 h-4" />
-                          <span>Preferences</span>
-                        </a>
+                          <span>Settings</span>
+                        </Link>
                         <hr className="my-2 border-gray-100" />
                         <button
                           onClick={handleLogout}
@@ -174,15 +177,15 @@ export default function Header() {
           <div className="lg:hidden border-t border-gray-100 py-4 bg-white rounded-b-lg shadow-lg">
             <nav className="flex flex-col space-y-2">
               {navigationItems.map((item) => (
-                <a
+                <Link
                   key={item.name}
-                  href={item.href}
+                  to={item.href}
                   className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 rounded-lg mx-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <item.icon className="w-5 h-5" />
                   <span className="font-medium">{item.name}</span>
-                </a>
+                </Link>
               ))}
               {user?.is_admin && (
                 <a
@@ -192,7 +195,7 @@ export default function Header() {
                 >
                   <Settings className="w-5 h-5" />
                   <span className="font-medium">Admin Panel</span>
-                </a>
+                </Link>
               )}
             </nav>
           </div>
