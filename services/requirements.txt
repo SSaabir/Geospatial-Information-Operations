@@ -22,6 +22,9 @@ plotly==5.17.0
 httpx==0.25.2
 aiohttp==3.9.1
 
+# Payment processing
+stripe>=5.0.0
+
 # Database and ORM
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
@@ -47,6 +50,7 @@ redis==5.0.1
 # Report generation
 jinja2==3.1.2
 weasyprint==60.2
+openpyxl==3.1.2
 
 # Utilities
 pydantic==2.5.0

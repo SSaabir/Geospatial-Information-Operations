@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-
-// Mock FeatureGate component for demonstration
-const FeatureGate = ({ minTier, fallback, children }) => {
-  // For demo, allow all features
-  return children;
-};
+import { useAuth } from '../contexts/AuthContext';
+import { Lock } from 'lucide-react';
 
 const WeatherPredictor = () => {
+  const { isAtLeast, tier } = useAuth();
   const [formData, setFormData] = useState({
     datetime: '',
     sunrise: '',
@@ -24,7 +21,7 @@ const WeatherPredictor = () => {
   const [error, setError] = useState('');
 
   // API URL - now using the unified backend
-  const API_URL = 'http://localhost:8000/api/weather';
+  const API_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}/api/weather`;
 
   const handleInputChange = (e) => {
     setFormData({
@@ -192,11 +189,35 @@ const WeatherPredictor = () => {
   );
 
   return (
-    <div className="min-h-screen w-full p-6" style={{ background: 'linear-gradient(135deg, #F5EFFF 0%, #E5D9F2 50%, #CDC1FF 100%)' }}>
+    <div className="min-h-screen w-full p-6" style={{ background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 50%, #A7F3D0 100%)' }}>
       <div className="w-full max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-8">
-        <h1 className="text-5xl font-bold text-center mb-10 text-gray-800">
+        <h1 className="text-5xl font-bold text-center mb-10 bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
           🌤 Enhanced Climate Predictor
         </h1>
+
+        {/* Tier Information Banner */}
+        {!isAtLeast('researcher') && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-md">
+            <div className="flex items-center gap-3">
+              <Lock className="w-6 h-6 text-purple-600" />
+              <div className="flex-1">
+                <p className="text-purple-900 font-semibold">
+                  🔒 Advanced Weather Prediction Features
+                </p>
+                <p className="text-purple-700 text-sm">
+                  Current tier: <span className="font-semibold uppercase text-purple-900">{tier}</span> • 
+                  Upgrade to <span className="font-semibold">Researcher</span> or <span className="font-semibold">Professional</span> for ML-powered predictions, historical data analysis, and dataset insights.
+                </p>
+              </div>
+              <a
+                href="/checkout?plan=researcher"
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 font-semibold text-sm whitespace-nowrap shadow-lg hover:shadow-xl"
+              >
+                Upgrade Now
+              </a>
+            </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

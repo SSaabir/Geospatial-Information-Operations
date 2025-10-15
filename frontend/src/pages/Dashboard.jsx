@@ -2,11 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { TrendingUp, Thermometer, Droplets, Wind, Sun, Eye, Activity, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import UsageWidget from '../components/UsageWidget';
 
 export default function Dashboard() {
   const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
+
+  // Redirect admins to admin dashboard
+  useEffect(() => {
+    if (user?.is_admin) {
+      navigate('/admin/dashboard');
+    }
+  }, [user, navigate]);
 
   // State for fetched data
   const [temperatureData, setTemperatureData] = useState([]);
@@ -16,14 +26,67 @@ export default function Dashboard() {
 
   // Fetch backend data
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || user?.is_admin) return;
 
     const fetchDashboardData = async () => {
       try {
-        // Use mock data for now since weather endpoints are not implemented yet
-        // TODO: Replace with actual API calls when weather endpoints are created
+        const { apiCall } = require('../contexts/AuthContext');
         
-        // Mock temperature data
+        // Fetch real weather trends from backend
+        const trendsResponse = await apiCall('/dashboard/weather/trends?days=7');
+        if (trendsResponse?.daily_temps) {
+          // Transform for hourly view
+          const hourlyData = [];
+          const latestDay = trendsResponse.daily_temps[trendsResponse.daily_temps.length - 1];
+          
+          // Generate hourly points for today based on latest data
+          for (let hour = 0; hour <= 20; hour += 4) {
+            hourlyData.push({
+              time: `${hour.toString().padStart(2, '0')}:00`,
+              temp: latestDay.temp + (Math.random() * 4 - 2), // Add variation
+              humidity: latestDay.humidity + (Math.random() * 10 - 5)
+            });
+          }
+          setTemperatureData(hourlyData);
+          
+          // Transform weekly data
+          const weekly = trendsResponse.daily_temps.map((day, index) => {
+            const date = new Date(day.date);
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+            return {
+              day: dayName,
+              temp: Math.round(day.temp),
+              rainfall: Math.round(Math.random() * 15), // Mock rainfall for now
+              wind: Math.round(day.wind_speed || 0)
+            };
+          });
+          setWeeklyData(weekly);
+        }
+
+        // Fetch real alerts from notifications
+        const alertsResponse = await apiCall('/dashboard/activity/recent?limit=5');
+        if (alertsResponse?.activities) {
+          const formattedAlerts = alertsResponse.activities.map(activity => ({
+            id: activity.id,
+            type: activity.type === 'warning' || activity.type === 'error' ? 'warning' :
+                  activity.type === 'success' ? 'success' : 'info',
+            message: activity.message || activity.title,
+            time: calculateTimeAgo(activity.timestamp)
+          }));
+          setAlerts(formattedAlerts);
+        }
+
+        // Regional data (keep as mock for now - would need regional weather data)
+        setRegionData([
+          { name: 'Colombo', value: 30, color: '#8B5CF6' },
+          { name: 'Kandy', value: 25, color: '#6366F1' },
+          { name: 'Galle', value: 28, color: '#A855F7' },
+          { name: 'Jaffna', value: 32, color: '#EC4899' }
+        ]);
+
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        // Fallback to mock data on error
         setTemperatureData([
           { time: '00:00', temp: 24.5, humidity: 78 },
           { time: '04:00', temp: 23.2, humidity: 82 },
@@ -32,40 +95,27 @@ export default function Dashboard() {
           { time: '16:00', temp: 29.3, humidity: 70 },
           { time: '20:00', temp: 26.1, humidity: 76 }
         ]);
-
-        // Mock weekly data
-        setWeeklyData([
-          { day: 'Mon', temp: 28, rainfall: 2 },
-          { day: 'Tue', temp: 29, rainfall: 0 },
-          { day: 'Wed', temp: 31, rainfall: 5 },
-          { day: 'Thu', temp: 30, rainfall: 12 },
-          { day: 'Fri', temp: 27, rainfall: 8 },
-          { day: 'Sat', temp: 28, rainfall: 3 },
-          { day: 'Sun', temp: 29, rainfall: 0 }
-        ]);
-
-        // Mock region data
-        setRegionData([
-          { name: 'Colombo', value: 30, color: '#8B5CF6' },
-          { name: 'Kandy', value: 25, color: '#6366F1' },
-          { name: 'Galle', value: 28, color: '#A855F7' },
-          { name: 'Jaffna', value: 32, color: '#EC4899' }
-        ]);
-
-        // Mock alerts
-        setAlerts([
-          { id: 1, type: 'warning', message: 'Heavy rainfall expected in Colombo', time: '2 hours ago' },
-          { id: 2, type: 'info', message: 'Temperature rising in northern regions', time: '5 hours ago' },
-          { id: 3, type: 'success', message: 'Weather conditions optimal for outdoor activities', time: '1 day ago' }
-        ]);
-
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
       }
     };
 
     fetchDashboardData();
-  }, [isAuthenticated, selectedTimeRange]);
+  }, [isAuthenticated, user?.is_admin, selectedTimeRange]);
+
+  // Helper function to calculate time ago
+  const calculateTimeAgo = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    const now = new Date();
+    const time = new Date(timestamp);
+    const diffMs = now - time;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffDays > 0) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffHours > 0) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffMins > 0) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    return 'Just now';
+  };
 
   if (!isAuthenticated) {
     return (
@@ -88,6 +138,9 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{ backgroundColor: '#F5EFFF' }}>
       <div className="container mx-auto px-4 py-8">
+
+        <UsageWidget />
+
         {/* Dashboard Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">

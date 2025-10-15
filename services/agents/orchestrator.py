@@ -687,9 +687,8 @@ def enhanced_output_compilation_node(state: EnhancedWorkflowState) -> EnhancedWo
             # Include FULL collector result (not just preview) for frontend to parse
             collector_result = state.get('collector_result', 'No data collected')
             
-            # Format trend result safely
+            # Get FULL trend result (don't truncate)
             trend_result = state.get('trend_result', 'No trend analysis')
-            trend_preview = str(trend_result)[:500] if trend_result else 'No trend analysis'
             
             # Format visualizations
             viz_paths = state.get('visualization_paths', {})
@@ -707,7 +706,7 @@ def enhanced_output_compilation_node(state: EnhancedWorkflowState) -> EnhancedWo
                 "security_status": state.get('security_assessment', {}).get('security_status', 'Unknown'),
                 "ethics_status": state.get('ethics_assessment', {}).get('ethics_level', 'Unknown'),
                 "collector_data": collector_result,  # FULL DATA
-                "trend_analysis": trend_preview,
+                "trend_analysis": trend_result,  # FULL TREND DATA (not truncated)
                 "visualizations": viz_paths,
                 "compliance_status": state['compliance_status'],
                 "execution_time": total_execution_time,

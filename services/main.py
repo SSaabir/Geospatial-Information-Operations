@@ -26,6 +26,10 @@ from api.admin_api import admin_router
 from api.security_dashboard_api import security_dashboard_router
 from api.ai_ethics_dashboard_api import ai_ethics_dashboard_router
 from api.analytics_dashboard_api import analytics_dashboard_router
+from api.chat_api import router as chat_router
+from api.dashboard_api import dashboard_router
+from api.forecast_api import forecast_router
+from api.reports_api import reports_router
 from db_config import DatabaseConfig
 from db_seed import create_tables_and_seed
 from security.auth_middleware import AuthenticationError, AuthorizationError
@@ -114,6 +118,10 @@ app.include_router(admin_router)
 app.include_router(security_dashboard_router)
 app.include_router(ai_ethics_dashboard_router)
 app.include_router(analytics_dashboard_router)
+app.include_router(chat_router)
+app.include_router(dashboard_router)
+app.include_router(forecast_router)
+app.include_router(reports_router)
 
 # Mount static files for visualizations
 visualizations_dir = Path(__file__).parent / "visualizations"

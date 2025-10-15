@@ -9,10 +9,11 @@ const plans = [
     price: '$0',
     period: '/mo',
     features: [
-      '24-hour forecast',
-      'Basic 1-day temp trend (Linear Regression)',
-      'View-only Data Exchange',
-      'Basic trends & graphs',
+      'Current weather data & trends',
+      'Weather condition prediction (ML)',
+      'Basic charts & visualizations',
+      'Interactive map view',
+      '5 AI operations/mo',
     ],
   },
   {
@@ -21,12 +22,12 @@ const plans = [
     price: '$29',
     period: '/mo',
     features: [
-      '7-day forecast + ML prediction',
-      'Confidence intervals (75-95%)',
-      'Download datasets (5 years history)',
-      'Advanced visualization',
-      'PDF/Excel reports',
-      '5,000 API calls/mo',
+      '24-hour forecast + 7-day trends',
+      'Time-series prediction models',
+      'Advanced visualizations & maps',
+      'PDF/Excel report export',
+      'Historical data analysis',
+      '5,000 AI operations/mo',
     ],
   },
   {
@@ -35,12 +36,12 @@ const plans = [
     price: '$99',
     period: '/mo',
     features: [
-      'Seasonal outlook + risk analysis (Ensemble AI)',
-      '20+ years historical data',
-      'Upload + sell datasets',
-      'Enterprise analytics',
-      'Full + custom reports',
-      'Unlimited API calls',
+      'Multi-day forecast (7-30 days)',
+      'AI-powered trend analysis',
+      'Custom reports & templates',
+      'Enterprise analytics dashboard',
+      'Priority AI processing',
+      'Unlimited AI operations',
     ],
   },
 ];
@@ -127,13 +128,13 @@ export default function Pricing() {
               </thead>
               <tbody>
                 {[
-                  ['Forecast Data', '24 hrs only', '7-day forecast', 'Full + Seasonal outlook'],
-                  ['Trends & Graphs', 'Basic', 'Advanced visualization', 'Enterprise analytics'],
-                  ['Reports', 'None', 'PDF/Excel summary', 'Full + Custom reports'],
-                  ['Historical Data', 'No', 'Limited (5 years)', 'Full (20+ years)'],
-                  ['API Calls / Month', '5', '5,000', 'Unlimited'],
-                  ['Data Exchange Market', 'View only', 'Download', 'Upload + Sell data'],
-                  ['Prediction (AI/ML)', 'Basic model (1-day temp trend)', 'ML prediction (7-day + CI)', 'Advanced AI (seasonal + risk)'],
+                  ['Forecast Data', 'Current + trends', '24hr + 7-day forecast', '7-30 day forecast'],
+                  ['Visualizations', 'Basic charts', 'Advanced + Maps', 'Enterprise + Custom'],
+                  ['Reports', 'View only', 'PDF/Excel export', 'Custom templates'],
+                  ['Historical Data', 'Recent data', 'Full history', 'Full history + analysis'],
+                  ['AI Operations / Month', '5', '5,000', 'Unlimited'],
+                  ['Map View', 'Basic', 'Interactive', 'Advanced layers'],
+                  ['Prediction Models', 'Weather classifier', 'Time-series forecast', 'Multi-model ensemble'],
                 ].map(([feature, free, res, pro], idx) => (
                   <tr
                     key={feature}

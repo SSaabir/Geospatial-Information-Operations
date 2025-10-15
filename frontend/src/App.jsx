@@ -12,7 +12,7 @@ import WeatherPredictor from './pages/WeatherPredictor'
 import Login from './pages/Login'
 import Chat from './pages/Chat'
 import Dashboard from './pages/Dashboard'
-import OrchestratorDashboard from './pages/OrchestratorDashboard'
+import WorkflowChat from './pages/WorkflowChat'
 import SecurityDashboard from './pages/SecurityDashboard'
 import AIEthicsDashboard from './pages/AIEthicsDashboard'
 import Phase3Demo from './pages/Phase3Demo'
@@ -25,6 +25,7 @@ import PaymentSuccess from './pages/PaymentSuccess'
 import NotificationsPage from './pages/NotificationsPage'
 import DebugAuth from './pages/DebugAuth'
 import AdminTest from './pages/AdminTest'
+import MapView from './components/MapView'
 
 // Import layout components
 import Header from './components/Header'
@@ -64,6 +65,9 @@ function App() {
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/payment-success" element={<PaymentSuccess />} />
                     
+                    {/* Map route - Public access with tier-based features */}
+                    <Route path="/map" element={<MapView />} />
+                    
                     {/* Dashboard routes - Protected */}
                     <Route path="/dashboard" element={
                       <ProtectedRoute>
@@ -72,7 +76,7 @@ function App() {
                     } />
                     <Route path="/workflow" element={
                       <ProtectedRoute>
-                        <OrchestratorDashboard />
+                        <WorkflowChat />
                       </ProtectedRoute>
                     } />
 
@@ -112,15 +116,19 @@ function App() {
                       </ProtectedRoute>
                     } />
 
-                    {/* Debug Auth Page - Protected */}
-                    <Route path="/debug-auth" element={
-                      <ProtectedRoute>
-                        <DebugAuth />
-                      </ProtectedRoute>
-                    } />
+                    {/* Debug Auth Page - Development Only */}
+                    {import.meta.env.DEV && (
+                      <Route path="/debug-auth" element={
+                        <ProtectedRoute>
+                          <DebugAuth />
+                        </ProtectedRoute>
+                      } />
+                    )}
 
-                    {/* Admin Test Page - No protection to see raw data */}
-                    <Route path="/admin-test" element={<AdminTest />} />
+                    {/* Admin Test Page - Development Only */}
+                    {import.meta.env.DEV && (
+                      <Route path="/admin-test" element={<AdminTest />} />
+                    )}
                     
                     {/* Admin routes - Admin Only */}
                     <Route path="/admin/dashboard" element={

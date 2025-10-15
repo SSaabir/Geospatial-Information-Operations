@@ -3,11 +3,12 @@ import { Bell, X, Check, Info, AlertTriangle, CheckCircle, Clock, Trash2, Filter
 import { useAuth } from '../contexts/AuthContext';
 
 export default function NotificationPanel() {
-  const { apiCall } = useAuth();
+  const { apiCall, isAuthenticated, user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all'); // all, unread, info, warning, error
   const panelRef = useRef(null);
 
@@ -30,15 +31,28 @@ export default function NotificationPanel() {
 
   // Fetch notifications
   const fetchNotifications = async () => {
+    if (!isAuthenticated || !user) {
+      return;
+    }
+    
     setLoading(true);
+    setError(null);
     try {
-      const response = await apiCall('/notifications/user', 'GET');
-      if (response.notifications) {
+      const response = await apiCall('/notifications/user');
+      
+      if (response && response.notifications) {
         setNotifications(response.notifications);
         setUnreadCount(response.notifications.filter(n => !n.read).length);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+      setError(error.message || 'Failed to load notifications');
+      // Set empty state on error
+      setNotifications([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -46,14 +60,16 @@ export default function NotificationPanel() {
 
   // Load notifications on mount and when panel opens
   useEffect(() => {
-    fetchNotifications();
-    // Poll every 30 seconds for new notifications
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    if (isAuthenticated && user) {
+      fetchNotifications();
+      // Poll every 30 seconds for new notifications
+      const interval = setInterval(fetchNotifications, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && isAuthenticated && user) {
       fetchNotifications();
     }
   }, [isOpen]);
@@ -69,7 +85,9 @@ export default function NotificationPanel() {
       // Check if notification was actually unread
       const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
       
-      await apiCall(`/notifications/${notificationId}/read`, 'PUT');
+      await apiCall(`/notifications/${notificationId}/read`, {
+        method: 'PUT'
+      });
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
@@ -85,7 +103,9 @@ export default function NotificationPanel() {
   // Mark all as read
   const markAllAsRead = async () => {
     try {
-      await apiCall('/notifications/read-all', 'PUT');
+      await apiCall('/notifications/read-all', {
+        method: 'PUT'
+      });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch (error) {
@@ -104,7 +124,9 @@ export default function NotificationPanel() {
       // Check if notification was unread BEFORE deleting
       const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
       
-      await apiCall(`/notifications/${notificationId}`, 'DELETE');
+      await apiCall(`/notifications/${notificationId}`, {
+        method: 'DELETE'
+      });
       
       // Update state
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
@@ -240,6 +262,17 @@ export default function NotificationPanel() {
             {loading ? (
               <div className="flex items-center justify-center h-40">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center h-40 text-red-500 px-4">
+                <AlertTriangle className="w-12 h-12 mb-2" />
+                <p className="text-sm text-center">{error}</p>
+                <button 
+                  onClick={fetchNotifications}
+                  className="mt-2 px-3 py-1 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700"
+                >
+                  Retry
+                </button>
               </div>
             ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-40 text-gray-400">

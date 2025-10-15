@@ -259,6 +259,27 @@ async def pay_session(session_id: str, payload: PayRequest, current_user: UserDB
     session.paid = True
     session.paid_at = now
     session.last4 = last4
+    
+    # Set is_active to TRUE for paid subscriptions
+    # First, deactivate any previous active sessions for this user
+    from sqlalchemy import text
+    db.execute(
+        text("""
+            UPDATE checkout_sessions 
+            SET is_active = FALSE 
+            WHERE user_id = :user_id 
+            AND is_active = TRUE 
+            AND id != :session_id
+        """),
+        {"user_id": current_user.id, "session_id": session_id}
+    )
+    
+    # Add is_active column to session if it doesn't exist (for backwards compatibility)
+    try:
+        session.is_active = True
+    except AttributeError:
+        # Column doesn't exist yet - migration hasn't run
+        pass
 
     # update user tier
     user = db.query(UserDB).filter(UserDB.id == current_user.id).first()

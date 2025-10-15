@@ -28,7 +28,7 @@ async def get_user_notifications(
 ):
     """Get notifications for the authenticated user"""
     try:
-        user_id = user_data.get("id")
+        user_id = user_data.get("user_id") or user_data.get("id")
         
         with db.connect() as conn:
             # Build query with filters - only show user-specific notifications
@@ -92,7 +92,7 @@ async def get_unread_count(
 ):
     """Get count of unread notifications for the user"""
     try:
-        user_id = user_data.get("id")
+        user_id = user_data.get("user_id") or user_data.get("id")
         
         with db.connect() as conn:
             result = conn.execute(
@@ -120,7 +120,7 @@ async def mark_notification_read(
 ):
     """Mark a notification as read"""
     try:
-        user_id = user_data.get("id")
+        user_id = user_data.get("user_id") or user_data.get("id")
         
         with db.connect() as conn:
             # Check if notification exists and belongs to user
@@ -162,7 +162,7 @@ async def mark_all_read(
 ):
     """Mark all notifications as read for the user"""
     try:
-        user_id = user_data.get("id")
+        user_id = user_data.get("user_id") or user_data.get("id")
         
         with db.connect() as conn:
             result = conn.execute(
@@ -193,7 +193,7 @@ async def delete_notification(
 ):
     """Delete a notification"""
     try:
-        user_id = user_data.get("id")
+        user_id = user_data.get("user_id") or user_data.get("id")
         
         with db.connect() as conn:
             # Check if notification exists and belongs to user
@@ -233,7 +233,7 @@ async def create_test_notification(
     try:
         from utils.notification_manager import notify
         
-        user_id = user_data.get("id")
+        user_id = user_data.get("user_id") or user_data.get("id")
         
         notify(
             subject="Test Notification",

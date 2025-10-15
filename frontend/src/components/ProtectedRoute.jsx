@@ -6,16 +6,6 @@ import { Shield, LogIn } from 'lucide-react';
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  // Debug logging
-  console.log('ProtectedRoute Debug:', {
-    requireAdmin,
-    isAuthenticated,
-    isLoading,
-    user,
-    isAdmin: user?.is_admin,
-    isAdminType: typeof user?.is_admin
-  });
-
   // Show loading state while checking authentication
   if (isLoading) {
     return (
@@ -57,14 +47,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   const isUserAdmin = user?.is_admin === true || user?.is_admin === 'true';
   
   if (requireAdmin && !isUserAdmin) {
-    console.error('❌ ACCESS DENIED - Admin check failed:', {
-      requireAdmin,
-      'user?.is_admin (raw)': user?.is_admin,
-      'user?.is_admin (type)': typeof user?.is_admin,
-      'isUserAdmin (computed)': isUserAdmin,
-      'user': user,
-      'Condition': `requireAdmin=${requireAdmin} && !isUserAdmin=${!isUserAdmin}`
-    });
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
         <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100 text-center">
@@ -90,15 +72,6 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   }
 
   // Render children if authenticated and authorized
-  if (requireAdmin) {
-    console.log('✅ ACCESS GRANTED - Admin check passed:', {
-      'user.is_admin (raw)': user.is_admin,
-      'user.is_admin (type)': typeof user.is_admin,
-      'isUserAdmin': isUserAdmin,
-      'user.id': user.id,
-      'user.username': user.username
-    });
-  }
   return children;
 };
 

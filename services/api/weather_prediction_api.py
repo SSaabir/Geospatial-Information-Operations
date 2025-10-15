@@ -1,5 +1,5 @@
 # api/weather_prediction_api.py
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, validator
 import joblib
 import numpy as np
@@ -9,6 +9,8 @@ import os
 from typing import Dict, Optional
 import logging
 import traceback
+
+from security.auth_middleware import get_current_user
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -121,7 +123,7 @@ async def get_conditions():
     }
 
 @weather_router.post("/predict", response_model=PredictionResponse)
-async def predict_weather(data: WeatherInput):
+async def predict_weather(data: WeatherInput, current_user: dict = Depends(get_current_user)):
     """
     Predict weather condition based on atmospheric parameters
     
@@ -132,6 +134,45 @@ async def predict_weather(data: WeatherInput):
     - **sealevelpressure**: Sea level pressure in hPa (900-1100)
     - **temp**: Temperature in Celsius (-50 to 60)
     """
+    
+    # Check quota if user is authenticated
+    if current_user:
+        try:
+            from db_config import DatabaseConfig
+            from models.usage import UsageMetrics
+            from utils.tier import check_and_notify_usage, enforce_quota_or_raise
+            from middleware.event_logger import increment_usage_metrics
+            
+            db_config = DatabaseConfig()
+            db = db_config.get_session()
+            
+            try:
+                user_tier = getattr(current_user, 'tier', 'free')
+                
+                # Get or create usage metrics
+                metrics = db.query(UsageMetrics).filter(UsageMetrics.user_id == current_user.id).first()
+                if not metrics:
+                    metrics = UsageMetrics(user_id=current_user.id)
+                    db.add(metrics)
+                
+                # Check usage thresholds and notify
+                check_and_notify_usage(metrics, user_tier, current_user.id, getattr(current_user, 'username', 'User'))
+                
+                # Enforce quota (will raise if exceeded)
+                enforce_quota_or_raise(metrics, user_tier, current_user.id, getattr(current_user, 'username', 'User'))
+                
+                # Increment usage
+                metrics.api_calls = (metrics.api_calls or 0) + 1
+                db.commit()
+                
+                # Log usage
+                increment_usage_metrics(current_user.id, api_calls=1)
+            finally:
+                db.close()
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"Non-fatal quota check error: {e}")
     
     # Check if models are loaded
     if model is None or label_encoder is None or imputer is None:

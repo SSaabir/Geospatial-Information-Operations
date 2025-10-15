@@ -19,6 +19,7 @@ const Checkout = () => {
   const [expYear, setExpYear] = useState('');
   const [cvc, setCvc] = useState('');
   const [cardholderName, setCardholderName] = useState('');
+  const [isRecurring, setIsRecurring] = useState(false); // Default to ONE-TIME payment
 
   // Plan details
   const planDetails = {
@@ -54,7 +55,7 @@ const Checkout = () => {
         setLoading(true);
         const response = await apiCall('/payments/create-session', {
           method: 'POST',
-          body: JSON.stringify({ plan: planId, recurring: true })
+          body: JSON.stringify({ plan: planId, recurring: isRecurring })
         });
         setSessionId(response.session_id);
       } catch (err) {
@@ -65,7 +66,7 @@ const Checkout = () => {
     };
 
     createSession();
-  }, [user, planId, authLoading, navigate, apiCall]);
+  }, [user, planId, isRecurring, authLoading, navigate, apiCall]);
 
   const formatCardNumber = (value) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
@@ -327,6 +328,37 @@ const Checkout = () => {
                     className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
                     style={{ borderColor: '#E5D9F2' }}
                   />
+                </div>
+              </div>
+
+              {/* Recurring Payment Toggle */}
+              <div className="mb-6 p-4 rounded-lg border-2" style={{ borderColor: '#E5D9F2', backgroundColor: '#FAFAFA' }}>
+                <div className="flex items-start space-x-3">
+                  <input
+                    type="checkbox"
+                    id="recurringToggle"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="mt-1 h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="flex-1">
+                    <label htmlFor="recurringToggle" className="block text-sm font-semibold text-gray-800 cursor-pointer">
+                      🔄 Enable Recurring Payment
+                    </label>
+                    <p className="text-xs text-gray-600 mt-1">
+                      {isRecurring ? (
+                        <>
+                          Your card will be charged <strong>${plan.price}/month</strong> automatically. 
+                          Your card details will be securely stored for future payments. 
+                          You can cancel anytime from Settings.
+                        </>
+                      ) : (
+                        <>
+                          One-time payment only. You'll need to manually renew when your subscription expires.
+                        </>
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
 

@@ -260,33 +260,13 @@ async def execute_workflow(
         # Determine user tier and usage limit
         inferred_type = classify_user_intent(request.query)
         tier = getattr(current_user, "tier", "free")
-        limit = get_limit_for_tier(tier)
+        
+        # Check usage and send appropriate notifications (50%, 75%, 90%)
+        from utils.tier import check_and_notify_usage
+        check_and_notify_usage(metrics, tier, current_user.id, current_user.username)
 
-        # Notify when nearing quota (90%) and when exceeded
-        try:
-            if limit != float('inf'):
-                usage_ratio = (metrics.api_calls or 0) / float(limit)
-                if usage_ratio >= 1.0:
-                    # Exceeded - notify and then enforce (will raise)
-                    notify(
-                        subject="Usage limit exceeded",
-                        message=f"User {current_user.username} (id={current_user.id}) exceeded their API quota ({metrics.api_calls}/{limit}).",
-                        level='critical',
-                        metadata={'user_id': current_user.id, 'api_calls': metrics.api_calls, 'limit': limit}
-                    )
-                elif usage_ratio >= 0.9:
-                    # Warning at 90%
-                    notify(
-                        subject="Usage nearing limit",
-                        message=f"User {current_user.username} (id={current_user.id}) has used {metrics.api_calls} of {limit} API calls ({int(usage_ratio*100)}%). Consider upgrading.",
-                        level='warning',
-                        metadata={'user_id': current_user.id, 'api_calls': metrics.api_calls, 'limit': limit}
-                    )
-        except Exception as e:
-            logger.error(f"Failed to send usage notification: {e}")
-
-        # Usage limit enforcement (may raise HTTPException)
-        enforce_quota_or_raise(metrics, tier)
+        # Usage limit enforcement (may raise HTTPException with 100% notification)
+        enforce_quota_or_raise(metrics, tier, current_user.id, current_user.username)
         tier_order = {"free": 0, "researcher": 1, "professional": 2}
         required_tier = {
             "data_view": "free",

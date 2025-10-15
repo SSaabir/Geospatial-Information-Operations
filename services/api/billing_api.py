@@ -160,3 +160,145 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     return {"received": True}
 
 
+@billing_router.post("/cancel-subscription")
+async def cancel_subscription(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Cancel the user's active subscription
+    - Sets is_active = FALSE for all user's checkout sessions
+    - Downgrades tier to 'free'
+    - Logs cancellation event
+    """
+    try:
+        from sqlalchemy import text
+        
+        user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check if user has an active subscription
+        result = db.execute(
+            text("""
+                SELECT COUNT(*) as count 
+                FROM checkout_sessions 
+                WHERE user_id = :user_id 
+                AND is_active = TRUE
+            """),
+            {"user_id": user.id}
+        )
+        active_count = result.fetchone()[0]
+        
+        if active_count == 0:
+            raise HTTPException(
+                status_code=400, 
+                detail="No active subscription found. You are currently on the free tier."
+            )
+        
+        # Deactivate all active subscriptions
+        db.execute(
+            text("""
+                UPDATE checkout_sessions 
+                SET is_active = FALSE 
+                WHERE user_id = :user_id 
+                AND is_active = TRUE
+            """),
+            {"user_id": user.id}
+        )
+        
+        # Downgrade to free tier
+        old_tier = user.tier
+        user.tier = "free"
+        db.commit()
+        db.refresh(user)
+        
+        logger.info(f"User {user.username} (ID: {user.id}) cancelled subscription. Downgraded from {old_tier} to free")
+        
+        # Log cancellation event
+        try:
+            log_auth_event("subscription_cancelled", user.id, True, 
+                          failure_reason=f"Downgraded from {old_tier} to free")
+        except Exception as e:
+            logger.exception(f"Non-fatal: failed to log cancellation: {e}")
+        
+        return {
+            "success": True,
+            "message": "Subscription cancelled successfully. You have been downgraded to the free tier.",
+            "previous_tier": old_tier,
+            "current_tier": "free",
+            "user": UserResponse.from_orm(user).dict()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"Failed to cancel subscription: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to cancel subscription: {str(e)}"
+        )
+
+
+@billing_router.get("/subscription-status")
+async def get_subscription_status(
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get current subscription status including:
+    - Active subscription details
+    - Recurring payment info
+    - Current tier
+    """
+    try:
+        from sqlalchemy import text
+        
+        user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get active subscription
+        result = db.execute(
+            text("""
+                SELECT id, plan, amount, recurring, paid_at, last4, is_active
+                FROM checkout_sessions 
+                WHERE user_id = :user_id 
+                AND is_active = TRUE
+                ORDER BY created_at DESC
+                LIMIT 1
+            """),
+            {"user_id": user.id}
+        )
+        active_subscription = result.fetchone()
+        
+        if active_subscription:
+            return {
+                "has_active_subscription": True,
+                "current_tier": user.tier,
+                "subscription": {
+                    "id": active_subscription[0],
+                    "plan": active_subscription[1],
+                    "amount": float(active_subscription[2]),
+                    "recurring": active_subscription[3],
+                    "paid_at": active_subscription[4].isoformat() if active_subscription[4] else None,
+                    "last4": active_subscription[5],
+                    "is_active": active_subscription[6]
+                }
+            }
+        else:
+            return {
+                "has_active_subscription": False,
+                "current_tier": user.tier,
+                "subscription": None
+            }
+        
+    except Exception as e:
+        logger.exception(f"Failed to get subscription status: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to get subscription status: {str(e)}"
+        )
+
+

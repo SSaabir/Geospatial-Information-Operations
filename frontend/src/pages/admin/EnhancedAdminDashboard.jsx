@@ -19,8 +19,6 @@ export default function EnhancedAdminDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  console.log('🎯 EnhancedAdminDashboard RENDERING', { user, isAuthenticated, activeTab });
-
   // Fetch dashboard data
   useEffect(() => {
     fetchDashboardData();
@@ -74,11 +72,6 @@ export default function EnhancedAdminDashboard() {
 
   // Check admin access using is_admin boolean field (not role)
   if (!isAuthenticated || !user?.is_admin) {
-    console.log('❌ EnhancedAdminDashboard - Access check failed:', { 
-      isAuthenticated, 
-      'user?.is_admin': user?.is_admin,
-      'user?.role (does not exist)': user?.role 
-    });
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
         <div className="text-center p-8">
@@ -95,8 +88,6 @@ export default function EnhancedAdminDashboard() {
       </div>
     );
   }
-
-  console.log('✅ EnhancedAdminDashboard - Access granted, rendering dashboard');
 
   // Tab configuration
   const tabs = [

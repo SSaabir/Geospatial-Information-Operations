@@ -246,6 +246,7 @@ async def login_user(user_credentials: UserLogin, request: Request, background_t
                 subject="User logged in",
                 message=f"User {user.username} (id={user.id}) logged in.",
                 level="info",
+                user_id=user.id,
                 metadata={"user_id": user.id, "username": user.username}
             )
         except Exception:
@@ -287,6 +288,7 @@ async def logout_user(request: Request, current_user: UserDB = Depends(get_curre
                 subject="User session ended",
                 message=f"User {current_user.username} (id={current_user.id}) ended their session.",
                 level="info",
+                user_id=current_user.id,
                 metadata={
                     "user_id": current_user.id,
                     "username": current_user.username,
@@ -366,6 +368,7 @@ async def change_user_tier(request: TierChangeRequest, current_user: UserDB = De
                 subject="Subscription tier changed",
                 message=f"User {current_user.username} (id={current_user.id}) changed tier from {old_tier} to {new_tier}.",
                 level="info",
+                user_id=current_user.id,
                 metadata={"user_id": current_user.id, "from": old_tier, "to": new_tier}
             )
         except Exception:
@@ -422,6 +425,7 @@ async def update_current_user(user_update: UserUpdate, current_user: UserDB = De
                 subject="User profile updated",
                 message=f"User {current_user.username} (id={current_user.id}) updated their profile.",
                 level="info",
+                user_id=current_user.id,
                 metadata={"user_id": current_user.id}
             )
         except Exception:
@@ -453,6 +457,7 @@ async def change_password(password_data: ChangePassword, current_user: UserDB = 
                 subject="Password changed",
                 message=f"Password changed for user {current_user.username} (id={current_user.id}).",
                 level="warning",
+                user_id=current_user.id,
                 metadata={"user_id": current_user.id}
             )
         except Exception:

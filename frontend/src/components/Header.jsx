@@ -27,13 +27,19 @@ export default function Header() {
 
   // Filter navigation items based on user role
   const allNavigationItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, adminOnly: false },
+    { name: 'Dashboard', href: '/dashboard', icon: BarChart3, adminOnly: false, hideForAdmin: true },
+    { name: 'Map', href: '/map', icon: MapPin, adminOnly: false },
     { name: 'Workflow', href: '/workflow', icon: Bot, adminOnly: false },
     { name: 'Chat Assistant', href: '/chat', icon: Bot, adminOnly: false },
   ];
 
-  // Only show non-admin items, or all items if user is admin viewing as regular user
-  const navigationItems = allNavigationItems.filter(item => !item.adminOnly || user?.is_admin);
+  // Filter out items: hide Dashboard for admins, and filter by adminOnly flag
+  const navigationItems = allNavigationItems.filter(item => {
+    // Hide items marked hideForAdmin if user is admin
+    if (item.hideForAdmin && user?.is_admin) return false;
+    // Show items that aren't admin-only, or if user is admin
+    return !item.adminOnly || user?.is_admin;
+  });
 
   return (
     <header className="bg-white/95 backdrop-blur-lg border-b border-purple-100 sticky top-0 z-50 shadow-sm">
@@ -46,7 +52,7 @@ export default function Header() {
                 <Cloud className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
                   GeoWeather AI
                 </h1>
                 <p className="text-xs text-gray-500 -mt-1">Climate Intelligence Platform</p>
@@ -81,11 +87,7 @@ export default function Header() {
           <div className="flex items-center space-x-3">
             {isAuthenticated ? (
               <>
-                {/* Search */}
-                <button className="hidden xl:flex items-center space-x-2 px-4 py-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700">
-                  <Search className="w-4 h-4" />
-                  <span className="text-sm">Search...</span>
-                </button>
+
 
                 {/* Notifications */}
                 <NotificationPanel />

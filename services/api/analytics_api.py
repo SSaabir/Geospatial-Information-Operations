@@ -27,6 +27,13 @@ def get_db():
 
 @analytics_router.get("/usage", response_model=Dict[str, Any])
 async def get_usage(current_user: UserDB = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Get usage statistics - READ-ONLY operation, does not count toward quota.
+    This endpoint is for displaying usage info, not consuming API calls.
+    """
+    tier = getattr(current_user, "tier", "free")
+    
+    # Get or create usage metrics (READ-ONLY - no increment)
     metrics = db.query(UsageMetrics).filter(UsageMetrics.user_id == current_user.id).first()
     if not metrics:
         metrics = UsageMetrics(user_id=current_user.id)
@@ -35,7 +42,6 @@ async def get_usage(current_user: UserDB = Depends(get_current_user), db: Sessio
         db.refresh(metrics)
     
     # Calculate limits and remaining usage
-    tier = getattr(current_user, "tier", "free")
     tier_limits = {"free": 5, "researcher": 5000, "professional": float('inf')}
     limit = tier_limits.get(tier, 5)
     remaining = max(0, limit - metrics.api_calls) if limit != float('inf') else float('inf')

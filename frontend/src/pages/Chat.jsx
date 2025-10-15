@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Sparkles, Clock, MessageSquare, Smile, Paperclip, MoreVertical } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 export default function Chat() {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([
@@ -42,32 +44,61 @@ export default function Chat() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentMessage = message;
     setMessage('');
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const botResponses = [
-        "Based on the latest meteorological data, I can provide you with detailed weather insights for your region. The current atmospheric patterns show interesting trends.",
-        "That's an excellent question about climate patterns. Let me analyze the available data from our weather stations across Sri Lanka for you.",
-        "I've processed the real-time meteorological data. The atmospheric conditions show some fascinating patterns that could impact local weather.",
-        "The weather analytics indicate significant atmospheric changes. Would you like me to create a detailed visualization or forecast report?",
-        "I can help you understand the correlation between humidity, temperature, and precipitation patterns in your specific region of interest.",
-        "The historical climate data reveals some interesting seasonal variations. Let me break down the temperature and rainfall patterns for you.",
-        "Based on satellite imagery and ground station data, I'm seeing some notable weather system developments. Here's what the models predict...",
-        "The geospatial analysis shows varying microclimates across different regions. I can provide location-specific weather insights if you'd like."
-      ];
-      
+    try {
+      // Get conversation history for context
+      const conversationHistory = messages.map(msg => ({
+        role: msg.type === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+        timestamp: msg.timestamp
+      }));
+
+      // Call Groq-powered chat API
+      const response = await fetch(`${API_BASE_URL}/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        },
+        body: JSON.stringify({
+          message: currentMessage,
+          conversation_history: conversationHistory
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to get response');
+      }
+
+      const data = await response.json();
+
       const botMessage = {
         id: Date.now(),
         type: 'bot',
-        content: botResponses[Math.floor(Math.random() * botResponses.length)],
-        timestamp: new Date()
+        content: data.response,
+        timestamp: new Date(data.timestamp)
       };
 
       setIsTyping(false);
       setMessages(prev => [...prev, botMessage]);
-    }, 1500 + Math.random() * 1000);
+    } catch (error) {
+      setIsTyping(false);
+      
+      // Show error message
+      const errorMessage = {
+        id: Date.now(),
+        type: 'bot',
+        content: error.message.includes('Professional tier') 
+          ? '🔒 Chat feature requires Professional tier subscription. Please upgrade to access AI-powered weather analytics chat.'
+          : '❌ Sorry, I encountered an error. Please try again or contact support if the issue persists.',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
   };
 
   const formatTime = (timestamp) => {
@@ -110,9 +141,44 @@ export default function Chat() {
     );
   }
 
+  // Check user tier
+  const userTier = user?.tier || 'free';
+  const hasProAccess = userTier === 'professional';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{backgroundColor: '#F5EFFF'}}>
       <div className="container mx-auto px-4 py-8">
+        {/* Tier Restriction Banner */}
+        {!hasProAccess && (
+          <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-2xl shadow-xl p-6 mb-6 border border-amber-300">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold mb-2">🔒 Professional Feature</h3>
+                  <p className="text-white/90 mb-3">
+                    AI-powered weather analytics chat is available exclusively for Professional tier subscribers. 
+                    Upgrade now to unlock real-time AI insights, climate analysis, and personalized weather forecasting.
+                  </p>
+                  <div className="flex space-x-3">
+                    <a
+                      href="/pricing"
+                      className="inline-flex items-center px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-all"
+                    >
+                      ⭐ Upgrade to Professional
+                    </a>
+                    <span className="text-white/70 px-4 py-2">
+                      Current tier: <strong className="capitalize">{userTier}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Chat Header */}
         <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-purple-100 mb-6">
           <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">

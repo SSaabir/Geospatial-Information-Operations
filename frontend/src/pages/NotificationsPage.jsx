@@ -51,7 +51,7 @@ export default function NotificationsPage() {
       // Check if notification was actually unread
       const wasUnread = notifications.find(n => n.id === notificationId)?.read === false;
       
-      await apiCall(`/notifications/${notificationId}/read`, 'PUT');
+      await apiCall(`/notifications/${notificationId}/read`, { method: 'PUT' });
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
       );
@@ -66,7 +66,7 @@ export default function NotificationsPage() {
 
   const markAllAsRead = async () => {
     try {
-      await apiCall('/notifications/read-all', 'PUT');
+      await apiCall('/notifications/read-all', { method: 'PUT' });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setStats(prev => ({ ...prev, unread: 0 }));
     } catch (error) {
@@ -88,7 +88,7 @@ export default function NotificationsPage() {
       const wasUnread = notification.read === false;
       const level = notification.level;
       
-      await apiCall(`/notifications/${notificationId}`, 'DELETE');
+      await apiCall(`/notifications/${notificationId}`, { method: 'DELETE' });
       
       // Update state
       setNotifications(prev => prev.filter(n => n.id !== notificationId));

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "../contexts/AuthContext";
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
 export default function Settings() {
   const { user, updateProfile, changeTier, changePassword, logout, apiCall, isLoading: authLoading } = useAuth();
   
@@ -453,6 +455,58 @@ export default function Settings() {
                     </div>
                   </div>
                 </div>
+
+                {/* Subscription Cancellation Section */}
+                {userData.tier !== 'free' && (
+                  <div className="border-t border-gray-300 pt-10 mb-10">
+                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">❌ Cancel Subscription</h3>
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+                      <p className="text-gray-700 mb-4">
+                        Cancelling your subscription will downgrade your account to the <strong>Free</strong> tier. 
+                        You'll lose access to premium features including:
+                      </p>
+                      <ul className="list-disc list-inside text-gray-600 mb-4 space-y-1">
+                        <li>AI-powered weather analytics chat</li>
+                        <li>Advanced prediction models</li>
+                        <li>Custom reports and visualizations</li>
+                        <li>Priority support</li>
+                      </ul>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to cancel your subscription? This action will downgrade you to the free tier immediately.')) {
+                            setIsLoading(true);
+                            try {
+                              const response = await fetch(`${API_BASE_URL}/billing/cancel-subscription`, {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                                }
+                              });
+                              
+                              const data = await response.json();
+                              
+                              if (response.ok) {
+                                setUserData(prev => ({ ...prev, tier: 'free' }));
+                                showToast(data.message || 'Subscription cancelled successfully', 'success');
+                              } else {
+                                showToast(data.detail || 'Failed to cancel subscription', 'error');
+                              }
+                            } catch (error) {
+                              showToast('Failed to cancel subscription: ' + error.message, 'error');
+                            } finally {
+                              setIsLoading(false);
+                            }
+                          }
+                        }}
+                        disabled={isLoading}
+                        className="px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isLoading ? '⏳ Cancelling...' : '🚫 Cancel My Subscription'}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Password Change Section */}
                 <div className="border-t border-gray-300 pt-10">
