@@ -15,7 +15,6 @@ import Dashboard from './pages/Dashboard'
 import WorkflowChat from './pages/WorkflowChat'
 import SecurityDashboard from './pages/SecurityDashboard'
 import AIEthicsDashboard from './pages/AIEthicsDashboard'
-import Phase3Demo from './pages/Phase3Demo'
 import EnhancedAdminDashboard from './pages/admin/EnhancedAdminDashboard'
 import Pricing from './components/Pricing'
 import Analytics from './pages/Analytics'
@@ -23,8 +22,6 @@ import Settings from './pages/Settings'
 import Checkout from './pages/Checkout'
 import PaymentSuccess from './pages/PaymentSuccess'
 import NotificationsPage from './pages/NotificationsPage'
-import DebugAuth from './pages/DebugAuth'
-import AdminTest from './pages/AdminTest'
 import MapView from './components/MapView'
 
 // Import layout components
@@ -60,7 +57,6 @@ function App() {
                     <Route path="/faq" element={<FaqPage />} />
                     <Route path="/terms" element={<TermsAndConditions />} />
                     <Route path="/weather-predictor" element={<WeatherPredictor />} />
-                    <Route path="/phase3-demo" element={<Phase3Demo />} />
                     <Route path="/pricing" element={<Pricing />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/payment-success" element={<PaymentSuccess />} />
@@ -116,20 +112,7 @@ function App() {
                       </ProtectedRoute>
                     } />
 
-                    {/* Debug Auth Page - Development Only */}
-                    {import.meta.env.DEV && (
-                      <Route path="/debug-auth" element={
-                        <ProtectedRoute>
-                          <DebugAuth />
-                        </ProtectedRoute>
-                      } />
-                    )}
-
-                    {/* Admin Test Page - Development Only */}
-                    {import.meta.env.DEV && (
-                      <Route path="/admin-test" element={<AdminTest />} />
-                    )}
-                    
+                                 
                     {/* Admin routes - Admin Only */}
                     <Route path="/admin/dashboard" element={
                       <ProtectedRoute requireAdmin={true}>
