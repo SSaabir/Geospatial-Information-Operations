@@ -1,5 +1,5 @@
 # api/weather_prediction_api.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel, Field, validator
 import joblib
 import numpy as np
@@ -9,8 +9,6 @@ import os
 from typing import Dict, Optional
 import logging
 import traceback
-
-from security.auth_middleware import get_current_user
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -37,18 +35,31 @@ def load_models():
     global model, label_encoder, imputer
     
     try:
+        # Try optimized model first, then fall back to regular model
         model_file = os.path.join(MODEL_DIR, "climate_condition_model_optimized.pkl")
+        if not os.path.exists(model_file):
+            model_file = os.path.join(MODEL_DIR, "climate_condition_model.pkl")
+        
         encoder_file = os.path.join(MODEL_DIR, "label_encoder.pkl")
         imputer_file = os.path.join(MODEL_DIR, "feature_imputer.pkl")
         
+        # Check if directory exists
         if not os.path.exists(MODEL_DIR):
-            logger.warning(f"Model directory not found: {MODEL_DIR}")
-            return False
-            
-        if not all(os.path.exists(f) for f in [model_file, encoder_file, imputer_file]):
-            logger.warning("One or more model files not found")
+            logger.error(f"❌ Model directory not found: {MODEL_DIR}")
             return False
         
+        # Log which files exist
+        logger.info(f"Checking model files in: {MODEL_DIR}")
+        logger.info(f"  - Model file exists: {os.path.exists(model_file)} ({os.path.basename(model_file)})")
+        logger.info(f"  - Encoder file exists: {os.path.exists(encoder_file)}")
+        logger.info(f"  - Imputer file exists: {os.path.exists(imputer_file)}")
+        
+        # Check if all files exist
+        if not all(os.path.exists(f) for f in [model_file, encoder_file, imputer_file]):
+            logger.error("❌ One or more model files not found")
+            return False
+        
+        # Load models
         model = joblib.load(model_file)
         label_encoder = joblib.load(encoder_file)
         imputer = joblib.load(imputer_file)
@@ -63,7 +74,11 @@ def load_models():
         return False
 
 # Try to load models on import
-load_models()
+models_loaded = load_models()
+if models_loaded:
+    logger.info("🚀 Weather prediction API ready")
+else:
+    logger.warning("⚠️ Weather prediction API started but models not loaded")
 
 # Pydantic models
 class WeatherInput(BaseModel):
@@ -96,6 +111,19 @@ class PredictionResponse(BaseModel):
     all_probabilities: Dict[str, float]
     processed_features: Dict[str, float]
 
+# Helper function to get optional user
+async def get_optional_user(authorization: Optional[str] = Header(None)):
+    """Get user if authenticated, return None if not"""
+    if not authorization:
+        return None
+    
+    try:
+        from security.auth_middleware import get_current_user
+        # Try to get user, but don't fail if not authenticated
+        return await get_current_user(authorization)
+    except:
+        return None
+
 @weather_router.get("/health")
 async def weather_health():
     """Check if weather prediction service is available"""
@@ -105,6 +133,12 @@ async def weather_health():
         "status": "healthy" if models_loaded else "models_not_loaded",
         "models_loaded": models_loaded,
         "model_directory": MODEL_DIR,
+        "model_files_exist": {
+            "optimized_model": os.path.exists(os.path.join(MODEL_DIR, "climate_condition_model_optimized.pkl")),
+            "regular_model": os.path.exists(os.path.join(MODEL_DIR, "climate_condition_model.pkl")),
+            "label_encoder": os.path.exists(os.path.join(MODEL_DIR, "label_encoder.pkl")),
+            "feature_imputer": os.path.exists(os.path.join(MODEL_DIR, "feature_imputer.pkl"))
+        },
         "available_conditions": list(label_encoder.classes_) if label_encoder else []
     }
 
@@ -123,9 +157,10 @@ async def get_conditions():
     }
 
 @weather_router.post("/predict", response_model=PredictionResponse)
-async def predict_weather(data: WeatherInput, current_user: dict = Depends(get_current_user)):
+async def predict_weather(data: WeatherInput):
     """
     Predict weather condition based on atmospheric parameters
+    PUBLIC ENDPOINT - No authentication required
     
     - **datetime**: Date in MM/DD/YYYY format
     - **sunrise**: Sunrise time in hh:mm:ss AM/PM format
@@ -134,45 +169,6 @@ async def predict_weather(data: WeatherInput, current_user: dict = Depends(get_c
     - **sealevelpressure**: Sea level pressure in hPa (900-1100)
     - **temp**: Temperature in Celsius (-50 to 60)
     """
-    
-    # Check quota if user is authenticated
-    if current_user:
-        try:
-            from db_config import DatabaseConfig
-            from models.usage import UsageMetrics
-            from utils.tier import check_and_notify_usage, enforce_quota_or_raise
-            from middleware.event_logger import increment_usage_metrics
-            
-            db_config = DatabaseConfig()
-            db = db_config.get_session()
-            
-            try:
-                user_tier = getattr(current_user, 'tier', 'free')
-                
-                # Get or create usage metrics
-                metrics = db.query(UsageMetrics).filter(UsageMetrics.user_id == current_user.id).first()
-                if not metrics:
-                    metrics = UsageMetrics(user_id=current_user.id)
-                    db.add(metrics)
-                
-                # Check usage thresholds and notify
-                check_and_notify_usage(metrics, user_tier, current_user.id, getattr(current_user, 'username', 'User'))
-                
-                # Enforce quota (will raise if exceeded)
-                enforce_quota_or_raise(metrics, user_tier, current_user.id, getattr(current_user, 'username', 'User'))
-                
-                # Increment usage
-                metrics.api_calls = (metrics.api_calls or 0) + 1
-                db.commit()
-                
-                # Log usage
-                increment_usage_metrics(current_user.id, api_calls=1)
-            finally:
-                db.close()
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.warning(f"Non-fatal quota check error: {e}")
     
     # Check if models are loaded
     if model is None or label_encoder is None or imputer is None:
@@ -185,7 +181,7 @@ async def predict_weather(data: WeatherInput, current_user: dict = Depends(get_c
                     "message": "Please ensure model files exist in the agents/predict directory",
                     "model_path": MODEL_DIR,
                     "required_files": [
-                        "climate_condition_model.pkl",
+                        "climate_condition_model_optimized.pkl OR climate_condition_model.pkl",
                         "label_encoder.pkl",
                         "feature_imputer.pkl"
                     ]
