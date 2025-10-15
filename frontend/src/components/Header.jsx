@@ -42,17 +42,17 @@ export default function Header() {
   });
 
   return (
-    <header className="bg-white/95 backdrop-blur-lg border-b border-purple-100 sticky top-0 z-50 shadow-sm">
+    <header className="bg-white/95 backdrop-blur-lg border-b sticky top-0 z-50 shadow-sm" style={{borderColor: '#F2EAD3'}}>
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo and Brand */}
           <div className="flex items-center space-x-4">
             <a href="/" className="flex items-center space-x-3 group">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform duration-200" style={{background: 'linear-gradient(to right, #F4991A, #344F1F)'}}>
                 <Cloud className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold" style={{background: 'linear-gradient(to right, #344F1F, #F4991A)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text'}}>
                   GeoWeather AI
                 </h1>
                 <p className="text-xs text-gray-500 -mt-1">Climate Intelligence Platform</p>
@@ -66,7 +66,10 @@ export default function Header() {
               <Link
                 key={item.name}
                 to={item.href}
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 group"
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 transition-all duration-200 group hover:text-white"
+                style={{'&:hover': {backgroundColor: '#F4991A'}}}
+                onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#F4991A'; e.currentTarget.style.color = 'white';}}
+                onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151';}}
               >
                 <item.icon className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 <span className="font-medium">{item.name}</span>
@@ -75,7 +78,10 @@ export default function Header() {
             {user?.is_admin && (
               <a
                 href="/admin/dashboard"
-                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 ml-2 border-l border-gray-200 pl-6"
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 transition-all duration-200 ml-2 border-l pl-6"
+                style={{borderColor: '#F2EAD3'}}
+                onMouseEnter={(e) => {e.currentTarget.style.backgroundColor = '#344F1F'; e.currentTarget.style.color = 'white';}}
+                onMouseLeave={(e) => {e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#374151';}}
               >
                 <Settings className="w-4 h-4" />
                 <span className="font-medium">Admin</span>
@@ -87,8 +93,6 @@ export default function Header() {
           <div className="flex items-center space-x-3">
             {isAuthenticated ? (
               <>
-
-
                 {/* Notifications */}
                 <NotificationPanel />
 
@@ -96,13 +100,16 @@ export default function Header() {
                 <div className="relative">
                   <button 
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center space-x-3 p-2 rounded-lg transition-colors"
+                    style={{backgroundColor: isDropdownOpen ? '#F9F5F0' : 'transparent'}}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9F5F0'}
+                    onMouseLeave={(e) => !isDropdownOpen && (e.currentTarget.style.backgroundColor = 'transparent')}
                   >
                     <div className="hidden sm:block text-right">
                       <p className="text-sm font-medium text-gray-800">{user?.name}</p>
                       <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
                     </div>
-                    <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-indigo-500 rounded-lg flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{background: 'linear-gradient(to right, #F4991A, #344F1F)'}}>
                       <span className="text-white font-medium text-sm">
                         {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                       </span>
@@ -112,7 +119,7 @@ export default function Header() {
                   
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 z-50">
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border z-50" style={{borderColor: '#F2EAD3'}}>
                       <div className="p-4 border-b border-gray-100">
                         <p className="font-medium text-gray-800">{user?.name}</p>
                         <p className="text-sm text-gray-500">{user?.email}</p>
@@ -151,13 +158,13 @@ export default function Header() {
               <div className="flex items-center space-x-3">
                 <a
                   href="/login"
-                  className="px-4 py-2 text-purple-600 hover:text-purple-700 font-medium transition-colors"
+                  className="px-4 py-2 text-orange-600 hover:text-orange-700 font-medium transition-colors"
                 >
                   Sign In
                 </a>
                 <a
                   href="/login"
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                  className="px-6 py-2 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-lg hover:from-orange-700 hover:to-green-900 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
                 >
                   Get Started
                 </a>
@@ -167,7 +174,7 @@ export default function Header() {
             {/* Mobile Menu Button */}
             <button 
               onClick={toggleMobileMenu}
-              className="lg:hidden p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200"
+              className="lg:hidden p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -182,7 +189,7 @@ export default function Header() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 rounded-lg mx-2"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg mx-2"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <item.icon className="w-5 h-5" />
@@ -192,7 +199,7 @@ export default function Header() {
               {user?.is_admin && (
                 <a
                   href="/admin/dashboard"
-                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-purple-600 hover:bg-purple-50 transition-all duration-200 rounded-lg mx-2 mt-2 pt-4 border-t border-gray-100"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg mx-2 mt-2 pt-4 border-t border-gray-100"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Settings className="w-5 h-5" />

@@ -73,14 +73,14 @@ export default function EnhancedAdminDashboard() {
   // Check admin access using is_admin boolean field (not role)
   if (!isAuthenticated || !user?.is_admin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center" style={{backgroundColor: '#F9F5F0'}}>
         <div className="text-center p-8">
           <Shield className="w-16 h-16 text-red-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
           <p className="text-gray-600 mb-6">You need administrator privileges to access this page.</p>
           <a
             href="/dashboard"
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-xl hover:from-orange-700 hover:to-green-900 transition-all duration-200"
           >
             Go to User Dashboard
           </a>
@@ -98,21 +98,21 @@ export default function EnhancedAdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{backgroundColor: '#F5EFFF'}}>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50" style={{backgroundColor: '#F9F5F0'}}>
       <div className="container mx-auto px-4 py-8">
         {/* Admin Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="mb-4 lg:mb-0">
               <div className="flex items-center space-x-3 mb-2">
-                <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-600 rounded-xl flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{background: 'linear-gradient(to right, #F4991A, #344F1F)'}}>
                   <Shield className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-green-800 bg-clip-text text-transparent">
                     Admin Dashboard
                   </h1>
-                  <p className="text-red-600 text-sm font-medium">Administrator Access</p>
+                  <p className="text-sm font-medium" style={{color: '#F4991A'}}>Administrator Access</p>
                 </div>
               </div>
               <p className="text-gray-600">
@@ -121,17 +121,7 @@ export default function EnhancedAdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <AddAdminPanel />
-              <select 
-                value={selectedTimeRange}
-                onChange={(e) => setSelectedTimeRange(e.target.value)}
-                className="px-4 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-              >
-                <option value="1h">Last Hour</option>
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-              </select>
-              <button className="flex items-center space-x-2 px-4 py-2 bg-white border border-purple-200 rounded-xl hover:bg-purple-50 transition-colors">
+              <button className="flex items-center space-x-2 px-4 py-2 bg-white border border-orange-200 rounded-xl hover:bg-orange-50 transition-colors">
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh</span>
               </button>
@@ -140,7 +130,7 @@ export default function EnhancedAdminDashboard() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="bg-white rounded-xl shadow-lg mb-6 border border-purple-100">
+        <div className="bg-white rounded-xl shadow-lg mb-6 border border-orange-100">
           <div className="flex overflow-x-auto">
             {tabs.map((tab) => (
               <button
@@ -148,8 +138,8 @@ export default function EnhancedAdminDashboard() {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center space-x-2 px-6 py-4 border-b-2 font-medium transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-purple-600 text-purple-600 bg-purple-50'
-                    : 'border-transparent text-gray-600 hover:text-purple-600 hover:bg-purple-50'
+                    ? 'border-orange-600 text-orange-600 bg-orange-50'
+                    : 'border-transparent text-gray-600 hover:text-orange-600 hover:bg-orange-50'
                 }`}
               >
                 <tab.icon className="w-5 h-5" />
@@ -165,7 +155,7 @@ export default function EnhancedAdminDashboard() {
             {/* System Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {systemStats.map((stat, index) => (
-                <div key={index} className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+                <div key={index} className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-gray-600 text-sm font-medium">{stat.name}</h3>
                     <div className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -188,7 +178,7 @@ export default function EnhancedAdminDashboard() {
             {/* Charts Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* User Activity Chart */}
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">User Activity</h3>
                 <ResponsiveContainer width="100%" height={250}>
                   <AreaChart data={userActivity}>
@@ -214,7 +204,7 @@ export default function EnhancedAdminDashboard() {
               </div>
 
               {/* System Alerts */}
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">System Alerts</h3>
                 <div className="space-y-3">
                   {systemAlerts.map((alert) => (
@@ -238,11 +228,11 @@ export default function EnhancedAdminDashboard() {
               </div>
               
               {/* Notifications */}
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Recent Notifications</h3>
                   <div className="flex items-center space-x-2">
-                    <Bell className="w-5 h-5 text-purple-600" />
+                    <Bell className="w-5 h-5 text-orange-600" />
                     {unreadCount > 0 && (
                       <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-600 rounded-full">
                         {unreadCount} new
@@ -261,7 +251,7 @@ export default function EnhancedAdminDashboard() {
                       <div 
                         key={notification.id} 
                         className={`flex items-start space-x-3 p-3 rounded-xl ${
-                          notification.read ? 'bg-gray-50' : 'bg-purple-50 border border-purple-100'
+                          notification.read ? 'bg-gray-50' : 'bg-orange-50 border border-orange-100'
                         }`}
                       >
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -283,7 +273,7 @@ export default function EnhancedAdminDashboard() {
                           <div className="flex items-start justify-between">
                             <p className="text-sm font-medium text-gray-800">{notification.subject}</p>
                             {notification.is_system_wide && (
-                              <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-600 rounded-full flex-shrink-0">
+                              <span className="ml-2 px-2 py-0.5 text-xs bg-orange-100 text-orange-600 rounded-full flex-shrink-0">
                                 System
                               </span>
                             )}
@@ -300,7 +290,7 @@ export default function EnhancedAdminDashboard() {
                               })}
                             </p>
                             {!notification.read && (
-                              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
                             )}
                           </div>
                         </div>
@@ -314,10 +304,10 @@ export default function EnhancedAdminDashboard() {
             {/* Data Sources & Users Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Data Sources Status */}
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Data Sources</h3>
-                  <Database className="w-5 h-5 text-purple-600" />
+                  <Database className="w-5 h-5 text-orange-600" />
                 </div>
                 <div className="space-y-3">
                   {dataSourceStats.map((source, index) => (
@@ -341,16 +331,16 @@ export default function EnhancedAdminDashboard() {
               </div>
 
               {/* Recent Users */}
-              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+              <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-800">Recent Users</h3>
-                  <Users className="w-5 h-5 text-purple-600" />
+                  <Users className="w-5 h-5 text-orange-600" />
                 </div>
                 <div className="space-y-3">
                   {recentUsers.map((user) => (
                     <div key={user.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="flex items-center space-x-3">
-                        <div className={`w-8 h-8 ${user.status === 'online' ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-purple-400 to-indigo-500'} rounded-lg flex items-center justify-center`}>
+                        <div className={`w-8 h-8 ${user.status === 'online' ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-orange-400 to-amber-500'} rounded-lg flex items-center justify-center`}>
                           <span className="text-white font-medium text-xs">
                             {user.username ? user.username.substring(0, 2).toUpperCase() : '??'}
                           </span>

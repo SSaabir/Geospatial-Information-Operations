@@ -156,14 +156,14 @@ export default function NotificationsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6">
             <div className="mb-4 lg:mb-0">
               <h1 className="text-3xl font-bold text-gray-800 flex items-center space-x-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-gradient-to-r from-orange-600 to-green-800 rounded-xl flex items-center justify-center">
                   <Bell className="w-6 h-6 text-white" />
                 </div>
                 <span>Notifications</span>
@@ -182,7 +182,7 @@ export default function NotificationsPage() {
               {stats.unread > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="flex items-center space-x-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                 >
                   <Check className="w-4 h-4" />
                   <span className="font-medium">Mark All Read</span>
@@ -203,13 +203,13 @@ export default function NotificationsPage() {
               </div>
             </div>
 
-            <div className="bg-purple-50 rounded-xl p-4 border border-purple-200">
+            <div className="bg-orange-50 rounded-xl p-4 border border-orange-200">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-purple-600">Unread</p>
-                  <p className="text-2xl font-bold text-purple-800">{stats.unread}</p>
+                  <p className="text-sm text-orange-600">Unread</p>
+                  <p className="text-2xl font-bold text-orange-800">{stats.unread}</p>
                 </div>
-                <Archive className="w-8 h-8 text-purple-400" />
+                <Archive className="w-8 h-8 text-orange-400" />
               </div>
             </div>
 
@@ -261,7 +261,7 @@ export default function NotificationsPage() {
                 onClick={() => setFilter(f.id)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   filter === f.id
-                    ? 'bg-purple-100 text-purple-700'
+                    ? 'bg-orange-100 text-orange-700'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -274,7 +274,7 @@ export default function NotificationsPage() {
         {/* Notifications List */}
         {loading ? (
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
           </div>
         ) : filteredNotifications.length === 0 ? (
           <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
@@ -288,7 +288,7 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 className={`bg-white rounded-xl p-6 border transition-all hover:shadow-lg ${
-                  !notification.read ? 'border-purple-200 ring-2 ring-purple-100' : 'border-gray-200'
+                  !notification.read ? 'border-orange-200 ring-2 ring-orange-100' : 'border-gray-200'
                 }`}
               >
                 <div className="flex items-start space-x-4">
@@ -306,7 +306,7 @@ export default function NotificationsPage() {
                         }`}>
                           <span>{notification.subject}</span>
                           {!notification.read && (
-                            <span className="w-2 h-2 bg-purple-600 rounded-full"></span>
+                            <span className="w-2 h-2 bg-orange-600 rounded-full"></span>
                           )}
                         </h3>
                         <p className="text-gray-600 mt-1">{notification.message}</p>
@@ -344,7 +344,7 @@ export default function NotificationsPage() {
                         {!notification.read && (
                           <button
                             onClick={(e) => markAsRead(notification.id, e)}
-                            className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium flex items-center space-x-1"
+                            className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-sm font-medium flex items-center space-x-1"
                           >
                             <Check className="w-4 h-4" />
                             <span>Mark Read</span>

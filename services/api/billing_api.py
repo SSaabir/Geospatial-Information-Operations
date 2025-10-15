@@ -49,11 +49,50 @@ logger = logging.getLogger(__name__)
 
 @billing_router.get("/plans")
 async def get_plans():
-    """Return available plans and a brief description."""
+    """Return available plans with detailed features including historical data access."""
     plans = [
-        {"id": "free", "name": "Free", "price": "$0/mo"},
-        {"id": "researcher", "name": "Researcher", "price": "$29/mo"},
-        {"id": "professional", "name": "Professional", "price": "$99/mo"},
+        {
+            "id": "free",
+            "name": "Free",
+            "price": "$0/mo",
+            "features": {
+                "api_calls_per_month": 5,
+                "historical_data_access": "30 days",
+                "historical_data_days": 30,
+                "forecast": "Current weather + trends",
+                "map_view": "Basic interactive map",
+                "reports": "View only",
+                "support": "Community"
+            }
+        },
+        {
+            "id": "researcher",
+            "name": "Researcher",
+            "price": "$29/mo",
+            "features": {
+                "api_calls_per_month": 5000,
+                "historical_data_access": "1 year (365 days)",
+                "historical_data_days": 365,
+                "forecast": "24-hour + 7-day forecast with ML predictions",
+                "map_view": "Interactive with advanced visualization",
+                "reports": "PDF/Excel export",
+                "support": "Email support"
+            }
+        },
+        {
+            "id": "professional",
+            "name": "Professional",
+            "price": "$99/mo",
+            "features": {
+                "api_calls_per_month": "unlimited",
+                "historical_data_access": "Full archive (28 years since 1997)",
+                "historical_data_days": "unlimited",
+                "forecast": "7-30 day seasonal outlook",
+                "map_view": "Advanced layers (Satellite, Terrain)",
+                "reports": "Custom templates",
+                "support": "Priority support"
+            }
+        }
     ]
     return {"plans": plans}
 

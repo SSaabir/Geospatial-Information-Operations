@@ -9,9 +9,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   // Show loading state while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center" style={{backgroundColor: '#F9F5F0'}}>
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Checking authentication...</p>
         </div>
       </div>
@@ -21,9 +21,9 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   // Redirect to login if not authenticated
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
-        <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl mb-6">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center" style={{backgroundColor: '#F9F5F0'}}>
+        <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-orange-100 text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-600 to-green-800 rounded-2xl mb-6">
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Authentication Required</h2>
@@ -32,7 +32,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
           </p>
           <a
             href="/login"
-            className="inline-flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 space-x-2"
+            className="inline-flex items-center justify-center w-full px-6 py-3 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-xl hover:from-orange-700 hover:to-green-900 transition-all duration-200 space-x-2"
           >
             <LogIn className="w-4 h-4" />
             <span>Sign In</span>
@@ -48,8 +48,8 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
   
   if (requireAdmin && !isUserAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
-        <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100 text-center">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center" style={{backgroundColor: '#F9F5F0'}}>
+        <div className="max-w-md w-full bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-orange-100 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-red-500 to-pink-600 rounded-2xl mb-6">
             <Shield className="w-8 h-8 text-white" />
           </div>

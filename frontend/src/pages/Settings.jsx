@@ -70,10 +70,10 @@ export default function Settings() {
   const updateTierBadge = (tier) => {
     return `inline-block px-4 py-1 rounded-full text-sm font-semibold uppercase ${
       tier === "free"
-        ? "bg-purple-200 text-purple-800"
+        ? "bg-orange-200 text-orange-800"
         : tier === "researcher"
-        ? "bg-purple-400 text-white"
-        : "bg-purple-700 text-white"
+        ? "bg-orange-400 text-white"
+        : "bg-orange-700 text-white"
     }`;
   };
 
@@ -425,7 +425,7 @@ export default function Settings() {
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        className="px-8 py-3 bg-[#E0DCEF] text-purple-800 rounded-lg font-semibold hover:bg-[#C7BCE6] disabled:opacity-50"
+                        className="px-8 py-3 bg-[#E0DCEF] text-orange-800 rounded-lg font-semibold hover:bg-[#C7BCE6] disabled:opacity-50"
                         disabled={isLoading}
                       >
                         ✖️ Cancel
@@ -590,7 +590,7 @@ export default function Settings() {
                               confirmPassword: "",
                             });
                           }}
-                          className="px-8 py-3 bg-[#E0DCEF] text-purple-800 rounded-lg font-semibold hover:bg-[#C7BCE6] disabled:opacity-50"
+                          className="px-8 py-3 bg-[#E0DCEF] text-orange-800 rounded-lg font-semibold hover:bg-[#C7BCE6] disabled:opacity-50"
                           disabled={isLoading}
                         >
                           ✖️ Cancel

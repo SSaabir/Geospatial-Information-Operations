@@ -229,26 +229,50 @@ def generate_pdf_report(
         
         # Add visualizations
         visualizations = workflow_data.get('visualizations', [])
+        print(f"[DEBUG] Visualizations type: {type(visualizations)}, value: {visualizations}")
+        
+        # Convert dict to list if needed (orchestrator returns dict)
+        if isinstance(visualizations, dict):
+            visualizations = list(visualizations.values())
+        elif not isinstance(visualizations, list):
+            visualizations = []
+        
         if visualizations and include_charts:
             story.append(Paragraph("Visualizations", heading_style))
             
+            images_added = 0
             for viz_path in visualizations[:4]:  # Limit to 4 images
                 try:
+                    # Skip None or empty paths
+                    if not viz_path:
+                        continue
+                    
                     # Check if it's a URL or local path
-                    if viz_path.startswith('http'):
+                    if isinstance(viz_path, str) and viz_path.startswith('http'):
                         # Download image
                         import urllib.request
                         img_data = urllib.request.urlopen(viz_path).read()
                         img_buffer = io.BytesIO(img_data)
                         img = Image(img_buffer, width=5*inch, height=3*inch)
-                    else:
-                        # Local file
+                    elif isinstance(viz_path, str) and Path(viz_path).exists():
+                        # Local file - verify it exists
                         img = Image(viz_path, width=5*inch, height=3*inch)
+                    else:
+                        print(f"Skipping invalid or non-existent image path: {viz_path}")
+                        continue
                     
                     story.append(img)
                     story.append(Spacer(1, 0.2*inch))
+                    images_added += 1
                 except Exception as e:
                     print(f"Error loading image {viz_path}: {e}")
+                    # Continue processing other images
+                    continue
+            
+            # If no images were added, remove the "Visualizations" heading
+            if images_added == 0:
+                # Remove last two items (heading and spacer before it)
+                story = story[:-1]
     
     # Fallback to old report format if no workflow_data
     elif report_type == "weather_summary":
@@ -596,32 +620,47 @@ async def export_report(
     }
     
     # Generate report based on format
-    if request.format == "pdf":
-        buffer = generate_pdf_report(
-            request.report_type,
-            report_data,
-            username,
-            user_tier,
-            request.include_charts,
-            workflow_data=request.workflow_data
+    try:
+        print(f"[DEBUG] Generating PDF with workflow_data keys: {request.workflow_data.keys() if request.workflow_data else 'None'}")
+        if request.workflow_data:
+            print(f"[DEBUG] Workflow type: {request.workflow_data.get('workflow_type')}")
+            print(f"[DEBUG] Has visualizations: {'visualizations' in request.workflow_data}")
+        
+        if request.format == "pdf":
+            buffer = generate_pdf_report(
+                request.report_type,
+                report_data,
+                username,
+                user_tier,
+                request.include_charts,
+                workflow_data=request.workflow_data
+            )
+            media_type = "application/pdf"
+            filename = f"{request.report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        else:  # excel
+            buffer = generate_excel_report(
+                request.report_type,
+                report_data,
+                username,
+                user_tier,
+                request.include_charts
+            )
+            media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            filename = f"{request.report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        
+        # Increment counters
+        metrics.api_calls += 1
+        metrics.reports_generated += 1
+        db.commit()
+    except Exception as e:
+        # Log the error and return detailed message
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Report generation error: {error_details}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate report: {str(e)}"
         )
-        media_type = "application/pdf"
-        filename = f"{request.report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-    else:  # excel
-        buffer = generate_excel_report(
-            request.report_type,
-            report_data,
-            username,
-            user_tier,
-            request.include_charts
-        )
-        media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        filename = f"{request.report_type}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
-    
-    # Increment counters
-    metrics.api_calls += 1
-    metrics.reports_generated += 1
-    db.commit()
     
     # Return as streaming response
     return StreamingResponse(

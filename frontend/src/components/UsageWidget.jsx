@@ -24,10 +24,10 @@ export default function UsageWidget() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-100 animate-pulse">
-        <div className="h-4 bg-purple-100 rounded w-1/2 mb-4"></div>
-        <div className="h-8 bg-purple-100 rounded mb-2"></div>
-        <div className="h-3 bg-purple-100 rounded w-3/4"></div>
+      <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100 animate-pulse">
+        <div className="h-4 bg-orange-100 rounded w-1/2 mb-4"></div>
+        <div className="h-8 bg-orange-100 rounded mb-2"></div>
+        <div className="h-3 bg-orange-100 rounded w-3/4"></div>
       </div>
     );
   }
@@ -63,14 +63,14 @@ export default function UsageWidget() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-6 border border-purple-100 hover:shadow-xl transition-shadow duration-300">
+    <div className="bg-white rounded-xl shadow-lg p-6 border border-orange-100 hover:shadow-xl transition-shadow duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           {getStatusIcon()}
           <h3 className="text-lg font-semibold text-gray-800">API Usage</h3>
         </div>
-        <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700 font-medium">
+        <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">
           {tier.charAt(0).toUpperCase() + tier.slice(1)}
         </span>
       </div>
@@ -108,8 +108,8 @@ export default function UsageWidget() {
       </div>
 
       {/* Status Message */}
-      <div className="flex items-start gap-2 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg">
-        <TrendingUp className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+      <div className="flex items-start gap-2 p-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg">
+        <TrendingUp className="w-4 h-4 text-orange-600 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           {isUnlimited ? (
             <p className="text-sm text-gray-700">
@@ -144,7 +144,7 @@ export default function UsageWidget() {
       {!isUnlimited && percentage >= 75 && (
         <button
           onClick={() => window.location.href = '/pricing'}
-          className="mt-4 w-full py-2 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-indigo-700 transition-all duration-300 flex items-center justify-center gap-2 group"
+          className="mt-4 w-full py-2 px-4 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-lg font-medium hover:from-orange-700 hover:to-green-900 transition-all duration-300 flex items-center justify-center gap-2 group"
         >
           Upgrade Plan
           <ArrowUpRight className="w-4 h-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />

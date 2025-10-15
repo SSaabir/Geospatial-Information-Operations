@@ -13,7 +13,6 @@ from typing import Optional, Dict, Any
 from jose import JWTError, jwt as jose_jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv
-import redis
 import json
 import logging
 
@@ -32,33 +31,14 @@ ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # Default 8 hours
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))  # Default 30 days
 
-# Redis configuration for token blacklisting (optional)
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
-REDIS_DB = int(os.getenv("REDIS_DB", "0"))
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
-
 class JWTHandler:
     """JWT token handler for authentication operations"""
     
     def __init__(self):
-        """Initialize JWT handler with Redis connection for token blacklisting"""
-        try:
-            self.redis_client = redis.Redis(
-                host=REDIS_HOST,
-                port=REDIS_PORT,
-                db=REDIS_DB,
-                password=REDIS_PASSWORD if REDIS_PASSWORD else None,
-                decode_responses=True
-            )
-            # Test Redis connection
-            self.redis_client.ping()
-            self.redis_available = True
-            logger.info("Redis connection established for token blacklisting")
-        except Exception as e:
-            logger.warning(f"Redis not available, token blacklisting disabled: {e}")
-            self.redis_client = None
-            self.redis_available = False
+        """Initialize JWT handler without Redis (token blacklisting disabled)"""
+        self.redis_client = None
+        self.redis_available = False
+        logger.info("JWT handler initialized (token blacklisting disabled)")
     
     def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
         """

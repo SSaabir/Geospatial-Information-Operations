@@ -157,7 +157,7 @@ const SecurityDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -174,7 +174,7 @@ const SecurityDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -302,7 +302,7 @@ const SecurityDashboard = () => {
                   onClick={() => setSelectedTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                     selectedTab === tab.id
-                      ? 'border-purple-500 text-purple-600'
+                      ? 'border-orange-500 text-orange-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -337,7 +337,7 @@ const SecurityDashboard = () => {
                   </div>
 
                   {/* Quick Stats */}
-                  <div className="bg-purple-50 rounded-xl p-6">
+                  <div className="bg-orange-50 rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Security Summary</h3>
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
@@ -397,7 +397,7 @@ const SecurityDashboard = () => {
                         </div>
                         <div className="flex flex-col items-end space-y-2">
                           <span className="text-xs font-medium text-gray-500">#{incident.id}</span>
-                          <button className="text-xs text-purple-600 hover:text-purple-700">
+                          <button className="text-xs text-orange-600 hover:text-orange-700">
                             View Details
                           </button>
                         </div>
@@ -425,10 +425,10 @@ const SecurityDashboard = () => {
                   <p className="text-2xl font-bold text-green-900">{securityData.metrics.data_processed_gb}</p>
                   <p className="text-sm text-green-700">GB Processed</p>
                 </div>
-                <div className="bg-purple-50 rounded-xl p-6 text-center">
-                  <Wifi className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                  <p className="text-2xl font-bold text-purple-900">{securityData.metrics.uptime_percentage}%</p>
-                  <p className="text-sm text-purple-700">Uptime</p>
+                <div className="bg-orange-50 rounded-xl p-6 text-center">
+                  <Wifi className="w-8 h-8 text-orange-600 mx-auto mb-3" />
+                  <p className="text-2xl font-bold text-orange-900">{securityData.metrics.uptime_percentage}%</p>
+                  <p className="text-sm text-orange-700">Uptime</p>
                 </div>
               </div>
             )}

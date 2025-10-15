@@ -89,7 +89,7 @@ const WorkflowChatWindow = ({ isOpen, onClose, onMinimize, isMinimized }) => {
       <div className="fixed bottom-4 right-4 z-50">
         <button
           onClick={onMinimize}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
+          className="bg-gradient-to-r from-blue-600 to-orange-600 text-white px-4 py-3 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
         >
           <Bot className="w-5 h-5" />
           <span className="font-medium">AI Assistant</span>
@@ -106,7 +106,7 @@ const WorkflowChatWindow = ({ isOpen, onClose, onMinimize, isMinimized }) => {
   return (
     <div className="fixed bottom-4 right-4 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 to-orange-600 text-white p-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-2 rounded-lg">
             <Bot className="w-5 h-5" />
@@ -149,7 +149,7 @@ const WorkflowChatWindow = ({ isOpen, onClose, onMinimize, isMinimized }) => {
                 ? 'bg-gradient-to-r from-blue-500 to-blue-600'
                 : message.isError
                 ? 'bg-red-500'
-                : 'bg-gradient-to-r from-purple-500 to-purple-600'
+                : 'bg-gradient-to-r from-orange-500 to-orange-600'
             }`}>
               {message.role === 'user' ? (
                 <User className="w-4 h-4 text-white" />
@@ -192,7 +192,7 @@ const WorkflowChatWindow = ({ isOpen, onClose, onMinimize, isMinimized }) => {
                 {/* Workflow Type Badge */}
                 {message.workflow_type && (
                   <div className="mt-2">
-                    <span className="inline-block px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                    <span className="inline-block px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
                       {message.workflow_type.replace('_', ' ')}
                     </span>
                   </div>
@@ -210,13 +210,13 @@ const WorkflowChatWindow = ({ isOpen, onClose, onMinimize, isMinimized }) => {
         {/* Loading indicator */}
         {isLoading && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center">
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">
               <div className="inline-block bg-white border border-gray-200 rounded-2xl px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                  <Loader2 className="w-4 h-4 animate-spin text-orange-600" />
                   <span className="text-sm text-gray-600">Thinking...</span>
                 </div>
               </div>
@@ -242,7 +242,7 @@ const WorkflowChatWindow = ({ isOpen, onClose, onMinimize, isMinimized }) => {
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-gradient-to-r from-blue-600 to-orange-600 text-white p-2 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />
           </button>

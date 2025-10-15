@@ -23,6 +23,7 @@ import Checkout from './pages/Checkout'
 import PaymentSuccess from './pages/PaymentSuccess'
 import NotificationsPage from './pages/NotificationsPage'
 import MapView from './components/MapView'
+import News from './pages/News'
 
 // Import layout components
 import Header from './components/Header'
@@ -63,6 +64,9 @@ function App() {
                     
                     {/* Map route - Public access with tier-based features */}
                     <Route path="/map" element={<MapView />} />
+                    
+                    {/* News route - Public access */}
+                    <Route path="/news" element={<News />} />
                     
                     {/* Dashboard routes - Protected */}
                     <Route path="/dashboard" element={

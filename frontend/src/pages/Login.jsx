@@ -98,35 +98,35 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center p-4" style={{backgroundColor: '#F5EFFF'}}>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center p-4" style={{backgroundColor: '#F9F5F0'}}>
       <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-indigo-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500"></div>
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-orange-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-green-700-300 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse delay-500"></div>
       </div>
 
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-600 to-green-800 rounded-2xl mb-4 shadow-lg">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-green-800 bg-clip-text text-transparent">
             Geospatial Analytics
           </h1>
           <p className="text-gray-600 mt-2">Welcome back to your weather dashboard</p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-purple-100">
-          <div className="flex bg-purple-50 rounded-2xl p-1 mb-6">
+        <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-8 border border-orange-100">
+          <div className="flex bg-orange-50 rounded-2xl p-1 mb-6">
             <button
               onClick={() => {setIsLogin(true); setError(''); reset();}}
-              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${isLogin ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${isLogin ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-orange-600'}`}
             >
               Login
             </button>
             <button
               onClick={() => {setIsLogin(false); setError(''); reset();}}
-              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${!isLogin ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-purple-600'}`}
+              className={`flex-1 py-2 px-4 rounded-xl font-medium transition-all duration-200 ${!isLogin ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-orange-600'}`}
             >
               Sign Up
             </button>
@@ -141,7 +141,7 @@ export default function Login() {
                   <input
                     type="text"
                     {...register("name")}
-                    className="w-full pl-10 pr-4 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
+                    className="w-full pl-10 pr-4 py-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-white/50"
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -156,7 +156,7 @@ export default function Login() {
                 <input
                   type="email"
                   {...register("email")}
-                  className="w-full pl-10 pr-4 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
+                  className="w-full pl-10 pr-4 py-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-white/50"
                   placeholder="Enter your email"
                 />
               </div>
@@ -170,13 +170,13 @@ export default function Login() {
                 <input
                   type={showPassword ? "text" : "password"}
                   {...register("password")}
-                  className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
+                  className="w-full pl-10 pr-12 py-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-white/50"
                   placeholder="Enter your password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-orange-600 transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -192,7 +192,7 @@ export default function Login() {
                   <input
                     type={showPassword ? "text" : "password"}
                     {...register("confirmPassword")}
-                    className="w-full pl-10 pr-12 py-3 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-white/50"
+                    className="w-full pl-10 pr-12 py-3 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-white/50"
                     placeholder="Confirm your password"
                   />
                 </div>
@@ -206,18 +206,18 @@ export default function Login() {
               </div>
             )}
 
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-3">
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
               <div className="flex items-center space-x-2 mb-2">
-                <Shield className="w-4 h-4 text-purple-600" />
-                <p className="text-purple-600 text-sm font-medium">Demo Mode</p>
+                <Shield className="w-4 h-4 text-orange-600" />
+                <p className="text-orange-600 text-sm font-medium">Demo Mode</p>
               </div>
-              <p className="text-purple-600 text-xs">Use any email/password combination to login</p>
+              <p className="text-orange-600 text-xs">Use any email/password combination to login</p>
             </div>
 
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white py-3 px-4 rounded-xl font-medium hover:from-purple-700 hover:to-indigo-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+              className="w-full bg-gradient-to-r from-orange-600 to-green-800 text-white py-3 px-4 rounded-xl font-medium hover:from-orange-700 hover:to-green-900 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
             >
               <div className="flex items-center justify-center space-x-2">
                 {isLoading ? (
@@ -234,12 +234,12 @@ export default function Login() {
 
           <div className="mt-6 text-center space-y-2">
             {isLogin && (
-              <Link to="/forgot-password" className="text-sm text-purple-600 hover:text-purple-800 transition-colors">
+              <Link to="/forgot-password" className="text-sm text-orange-600 hover:text-orange-800 transition-colors">
                 Forgot your password?
               </Link>
             )}
-            <div className="border-t border-purple-100 pt-4">
-              <Link to="/home" className="text-sm text-gray-500 hover:text-purple-600 transition-colors">
+            <div className="border-t border-orange-100 pt-4">
+              <Link to="/home" className="text-sm text-gray-500 hover:text-orange-600 transition-colors">
                 ← Back to Homepage
               </Link>
             </div>

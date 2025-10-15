@@ -43,7 +43,7 @@ export default function TermsAndConditions() {
       <div className="fixed inset-0 opacity-5 pointer-events-none z-[-1] bg-[radial-gradient(circle_at_20%_80%,#A896F5_0%,transparent_50%),radial-gradient(circle_at_80%_20%,#C8BBF6_0%,transparent_50%),radial-gradient(circle_at_40%_40%,#E3D9F3_0%,transparent_50%)]"></div>
 
       {/* Scroll progress */}
-      <div className="fixed top-0 left-0 w-full h-1 bg-purple-200 z-50">
+      <div className="fixed top-0 left-0 w-full h-1 bg-orange-200 z-50">
         <div
           className="h-full bg-gradient-to-r from-[#A896F5] to-[#C8BBF6] transition-all duration-150"
           style={{ width: `${scrollProgress}%` }}

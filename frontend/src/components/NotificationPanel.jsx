@@ -196,7 +196,7 @@ export default function NotificationPanel() {
       {/* Notification Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200"
+        className="relative p-2 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200"
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -219,7 +219,7 @@ export default function NotificationPanel() {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                    className="text-xs text-orange-600 hover:text-orange-700 font-medium"
                   >
                     Mark all read
                   </button>
@@ -247,7 +247,7 @@ export default function NotificationPanel() {
                   onClick={() => setFilter(f.id)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                     filter === f.id
-                      ? 'bg-purple-100 text-purple-700'
+                      ? 'bg-orange-100 text-orange-700'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -261,7 +261,7 @@ export default function NotificationPanel() {
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-40">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center h-40 text-red-500 px-4">
@@ -269,7 +269,7 @@ export default function NotificationPanel() {
                 <p className="text-sm text-center">{error}</p>
                 <button 
                   onClick={fetchNotifications}
-                  className="mt-2 px-3 py-1 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700"
+                  className="mt-2 px-3 py-1 bg-orange-600 text-white text-xs rounded-lg hover:bg-orange-700"
                 >
                   Retry
                 </button>
@@ -285,7 +285,7 @@ export default function NotificationPanel() {
                   <div
                     key={notification.id}
                     className={`p-4 hover:bg-gray-50 transition-colors ${
-                      !notification.read ? 'bg-purple-50/30' : ''
+                      !notification.read ? 'bg-orange-50/30' : ''
                     }`}
                   >
                     <div className="flex items-start space-x-3">
@@ -312,7 +312,7 @@ export default function NotificationPanel() {
                                 {formatTime(notification.timestamp)}
                               </span>
                               {!notification.read && (
-                                <span className="w-2 h-2 bg-purple-600 rounded-full"></span>
+                                <span className="w-2 h-2 bg-orange-600 rounded-full"></span>
                               )}
                             </div>
                           </div>
@@ -367,7 +367,7 @@ export default function NotificationPanel() {
                   setIsOpen(false);
                   window.location.href = '/notifications';
                 }}
-                className="w-full text-center text-sm text-purple-600 hover:text-purple-700 font-medium"
+                className="w-full text-center text-sm text-orange-600 hover:text-orange-700 font-medium"
               >
                 View all notifications
               </button>

@@ -23,16 +23,20 @@ const Checkout = () => {
 
   // Plan details
   const planDetails = {
-    free: { name: 'Free', price: 0, features: ['24-hour forecast', 'Basic trends'] },
+    free: { 
+      name: 'Free', 
+      price: 0, 
+      features: ['24-hour forecast', 'Basic trends', 'Last 30 days historical data', '5 API calls/mo'] 
+    },
     researcher: { 
       name: 'Researcher', 
       price: 29, 
-      features: ['7-day forecast + ML', 'Download datasets (5 years)', 'PDF/Excel reports', '5,000 API calls/mo'] 
+      features: ['7-day forecast + ML', 'Last 1 year historical data', 'PDF/Excel reports', '5,000 API calls/mo'] 
     },
     professional: { 
       name: 'Professional', 
       price: 99, 
-      features: ['Seasonal outlook', '20+ years data', 'Priority support', 'Unlimited API calls'] 
+      features: ['Seasonal outlook', 'Full 28-year archive (1997-2025)', 'Priority support', 'Unlimited API calls'] 
     }
   };
 
@@ -141,9 +145,9 @@ const Checkout = () => {
   // Show loading while auth is being verified
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F5EFFF' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F9F5F0' }}>
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#A294F9' }}></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4" style={{ borderColor: '#F4991A' }}></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -152,13 +156,13 @@ const Checkout = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F5EFFF' }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F9F5F0' }}>
         <div className="text-center">
           <p className="text-gray-600 mb-4">Please log in to continue with checkout</p>
           <button 
             onClick={() => navigate('/login')}
             className="px-6 py-2 rounded-lg text-white"
-            style={{ backgroundColor: '#A294F9' }}
+            style={{ backgroundColor: '#F4991A' }}
           >
             Go to Login
           </button>
@@ -168,7 +172,7 @@ const Checkout = () => {
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" style={{ backgroundColor: '#F5EFFF' }}>
+    <div className="min-h-screen py-12 px-4" style={{ backgroundColor: '#F9F5F0' }}>
       <div className="max-w-4xl mx-auto">
         {/* Back button */}
         <button
@@ -181,17 +185,17 @@ const Checkout = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Order Summary */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: '#E5D9F2' }}>
+          <div className="bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: '#F2EAD3' }}>
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Order Summary</h2>
             
-            <div className="mb-6 p-6 rounded-xl" style={{ backgroundColor: '#F5EFFF' }}>
+            <div className="mb-6 p-6 rounded-xl" style={{ backgroundColor: '#F9F5F0' }}>
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-800">{plan.name} Plan</h3>
                   <p className="text-sm text-gray-600">Monthly subscription</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold" style={{ color: '#A294F9' }}>${plan.price}</p>
+                  <p className="text-2xl font-bold" style={{ color: '#F4991A' }}>${plan.price}</p>
                   <p className="text-sm text-gray-600">/month</p>
                 </div>
               </div>
@@ -199,14 +203,14 @@ const Checkout = () => {
               <div className="space-y-2 mb-4">
                 {plan.features.map((feature, index) => (
                   <div key={index} className="flex items-center space-x-2 text-sm">
-                    <Check className="w-4 h-4" style={{ color: '#A294F9' }} />
+                    <Check className="w-4 h-4" style={{ color: '#F4991A' }} />
                     <span className="text-gray-600">{feature}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="border-t pt-4" style={{ borderColor: '#E5D9F2' }}>
+            <div className="border-t pt-4" style={{ borderColor: '#F2EAD3' }}>
               <div className="flex justify-between items-center mb-2">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-semibold">${plan.price}.00</span>
@@ -217,13 +221,13 @@ const Checkout = () => {
               </div>
               <div className="flex justify-between items-center text-xl font-bold mt-4">
                 <span>Total</span>
-                <span style={{ color: '#A294F9' }}>${plan.price}.00</span>
+                <span style={{ color: '#F4991A' }}>${plan.price}.00</span>
               </div>
             </div>
 
-            <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: '#E5D9F2' }}>
+            <div className="mt-6 p-4 rounded-lg" style={{ backgroundColor: '#F2EAD3' }}>
               <div className="flex items-start space-x-3">
-                <Lock className="w-5 h-5 mt-0.5" style={{ color: '#A294F9' }} />
+                <Lock className="w-5 h-5 mt-0.5" style={{ color: '#F4991A' }} />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-800">Secure Payment</p>
                   <p className="text-xs text-gray-600">Your payment information is encrypted and secure</p>
@@ -233,7 +237,7 @@ const Checkout = () => {
           </div>
 
           {/* Payment Form */}
-          <div className="bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: '#E5D9F2' }}>
+          <div className="bg-white rounded-2xl shadow-xl p-8 border" style={{ borderColor: '#F2EAD3' }}>
             <h2 className="text-2xl font-bold mb-6 text-gray-800">Payment Details</h2>
 
             {error && (
@@ -255,7 +259,7 @@ const Checkout = () => {
                   placeholder="John Doe"
                   required
                   className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
-                  style={{ borderColor: '#E5D9F2', focusRing: '#A294F9' }}
+                  style={{ borderColor: '#F2EAD3', focusRing: '#F4991A' }}
                 />
               </div>
 
@@ -273,7 +277,7 @@ const Checkout = () => {
                     maxLength="19"
                     required
                     className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
-                    style={{ borderColor: '#E5D9F2' }}
+                    style={{ borderColor: '#F2EAD3' }}
                   />
                   <CreditCard className="absolute right-3 top-3 w-6 h-6 text-gray-400" />
                 </div>
@@ -296,7 +300,7 @@ const Checkout = () => {
                     maxLength="2"
                     required
                     className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
-                    style={{ borderColor: '#E5D9F2' }}
+                    style={{ borderColor: '#F2EAD3' }}
                   />
                 </div>
                 <div>
@@ -311,7 +315,7 @@ const Checkout = () => {
                     maxLength="2"
                     required
                     className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
-                    style={{ borderColor: '#E5D9F2' }}
+                    style={{ borderColor: '#F2EAD3' }}
                   />
                 </div>
                 <div>
@@ -326,20 +330,20 @@ const Checkout = () => {
                     maxLength="4"
                     required
                     className="w-full px-4 py-3 rounded-lg border focus:outline-none focus:ring-2"
-                    style={{ borderColor: '#E5D9F2' }}
+                    style={{ borderColor: '#F2EAD3' }}
                   />
                 </div>
               </div>
 
               {/* Recurring Payment Toggle */}
-              <div className="mb-6 p-4 rounded-lg border-2" style={{ borderColor: '#E5D9F2', backgroundColor: '#FAFAFA' }}>
+              <div className="mb-6 p-4 rounded-lg border-2" style={{ borderColor: '#F2EAD3', backgroundColor: '#FAFAFA' }}>
                 <div className="flex items-start space-x-3">
                   <input
                     type="checkbox"
                     id="recurringToggle"
                     checked={isRecurring}
                     onChange={(e) => setIsRecurring(e.target.checked)}
-                    className="mt-1 h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    className="mt-1 h-5 w-5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
                   />
                   <div className="flex-1">
                     <label htmlFor="recurringToggle" className="block text-sm font-semibold text-gray-800 cursor-pointer">
@@ -363,7 +367,7 @@ const Checkout = () => {
               </div>
 
               {/* Billing Address Note */}
-              <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F5EFFF' }}>
+              <div className="mb-6 p-4 rounded-lg" style={{ backgroundColor: '#F9F5F0' }}>
                 <p className="text-sm text-gray-600">
                   <strong>Note:</strong> This is a demonstration payment system. 
                   Use any valid card number (e.g., 4532015114166952) for testing.
@@ -375,7 +379,7 @@ const Checkout = () => {
                 type="submit"
                 disabled={loading || !sessionId}
                 className="w-full py-4 rounded-lg text-white font-semibold text-lg transition-all duration-200 hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: '#A294F9' }}
+                style={{ backgroundColor: '#F4991A' }}
               >
                 {loading ? 'Processing...' : `Pay $${plan.price}.00`}
               </button>

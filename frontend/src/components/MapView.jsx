@@ -334,9 +334,9 @@ const MapView = () => {
                 <div className="text-xs text-gray-600 mb-1">Wind Speed</div>
                 <div className="text-2xl font-bold text-orange-600">{selectedStation.wind_speed} km/h</div>
               </div>
-              <div className="bg-purple-50 p-3 rounded-lg">
+              <div className="bg-orange-50 p-3 rounded-lg">
                 <div className="text-xs text-gray-600 mb-1">Conditions</div>
-                <div className="text-sm font-bold text-purple-600">{selectedStation.conditions}</div>
+                <div className="text-sm font-bold text-orange-600">{selectedStation.conditions}</div>
               </div>
             </div>
           </div>

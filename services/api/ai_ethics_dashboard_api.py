@@ -99,13 +99,49 @@ async def get_bias_detection(
                     "affected_predictions": row[2]
                 })
             
-            # Mock temporal bias data
-            temporal_bias = [
-                {"time_period": "Morning (6-12)", "bias_score": 0.09, "severity": "low"},
-                {"time_period": "Afternoon (12-18)", "bias_score": 0.15, "severity": "low"},
-                {"time_period": "Evening (18-24)", "bias_score": 0.28, "severity": "medium"},
-                {"time_period": "Night (0-6)", "bias_score": 0.41, "severity": "high"}
-            ]
+            # Get temporal bias data from actual bias detection log
+            temporal_result = conn.execute(text("""
+                SELECT 
+                    EXTRACT(HOUR FROM timestamp) as hour,
+                    AVG(severity) as avg_severity,
+                    COUNT(*) as count
+                FROM bias_detection_log
+                WHERE timestamp > NOW() - INTERVAL '30 days'
+                GROUP BY EXTRACT(HOUR FROM timestamp)
+                ORDER BY hour
+            """))
+            
+            # Group by time periods
+            temporal_groups = {"Morning (6-12)": [], "Afternoon (12-18)": [], "Evening (18-24)": [], "Night (0-6)": []}
+            for row in temporal_result:
+                hour = int(row[0]) if row[0] else 0
+                severity = float(row[1]) if row[1] else 0.0
+                
+                if 6 <= hour < 12:
+                    temporal_groups["Morning (6-12)"].append(severity)
+                elif 12 <= hour < 18:
+                    temporal_groups["Afternoon (12-18)"].append(severity)
+                elif 18 <= hour < 24:
+                    temporal_groups["Evening (18-24)"].append(severity)
+                else:
+                    temporal_groups["Night (0-6)"].append(severity)
+            
+            temporal_bias = []
+            for period, severities in temporal_groups.items():
+                if severities:
+                    avg_score = sum(severities) / len(severities)
+                    temporal_bias.append({
+                        "time_period": period,
+                        "bias_score": round(avg_score, 2),
+                        "severity": "high" if avg_score > 0.7 else "medium" if avg_score > 0.4 else "low"
+                    })
+                else:
+                    # If no data, show as low severity
+                    temporal_bias.append({
+                        "time_period": period,
+                        "bias_score": 0.0,
+                        "severity": "low"
+                    })
             
             return {
                 "bias_detection": {

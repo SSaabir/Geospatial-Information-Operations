@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Bot, User, Plus, Trash2, Edit2, Check, X, Menu, Clock, Download, Share2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
-const WorkflowChat = () => {
+function WorkflowChat() {
   const { apiCall, user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [currentConversationId, setCurrentConversationId] = useState(null);
@@ -181,6 +181,7 @@ Try clicking the quick action buttons below or type your own query!`,
 
     } catch (error) {
       console.error('Workflow error:', error);
+      
       const errorMessage = {
         role: 'assistant',
         content: `I encountered an error: ${error.message || 'Unable to process your request. Please try again.'}`,
@@ -232,7 +233,7 @@ Try clicking the quick action buttons below or type your own query!`,
         <div className="p-4 border-b border-gray-700">
           <button
             onClick={createNewConversation}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-4 py-3 rounded-lg transition-all font-medium"
+            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-orange-600 hover:from-blue-700 hover:to-orange-700 text-white px-4 py-3 rounded-lg transition-all font-medium"
           >
             <Plus className="w-5 h-5" />
             New Chat
@@ -320,7 +321,7 @@ Try clicking the quick action buttons below or type your own query!`,
         {/* User Info */}
         <div className="p-4 border-t border-gray-700">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-500 to-orange-500 flex items-center justify-center">
               <User className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
@@ -370,7 +371,7 @@ Try clicking the quick action buttons below or type your own query!`,
                 {/* Avatar for Assistant */}
                 {message.role === 'assistant' && (
                   <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                    message.isError ? 'bg-red-500' : 'bg-gradient-to-r from-purple-500 to-purple-600'
+                    message.isError ? 'bg-red-500' : 'bg-gradient-to-r from-orange-500 to-orange-600'
                   }`}>
                     <Bot className="w-5 h-5 text-white" />
                   </div>
@@ -479,9 +480,9 @@ Try clicking the quick action buttons below or type your own query!`,
                                 }
                                 
                                 return (
-                                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200">
+                                  <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-4 border border-orange-200">
                                     <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                      <span className="w-1 h-4 bg-purple-600 rounded"></span>
+                                      <span className="w-1 h-4 bg-orange-600 rounded"></span>
                                       Trend Analysis Summary
                                     </h3>
                                     
@@ -496,7 +497,7 @@ Try clicking the quick action buttons below or type your own query!`,
                                         !['date_range', 'data_points'].includes(key)
                                       ).map(([key, stats]) => (
                                         <div key={key} className="bg-white rounded-lg p-3 border border-gray-200">
-                                          <p className="text-xs font-bold text-purple-700 uppercase mb-2">
+                                          <p className="text-xs font-bold text-orange-700 uppercase mb-2">
                                             {key.replace(/_/g, ' ')}
                                           </p>
                                           {typeof stats === 'object' && stats !== null && (
@@ -550,14 +551,14 @@ Try clicking the quick action buttons below or type your own query!`,
 
                               return trendTableData && typeof trendTableData === 'object' && !Array.isArray(trendTableData) && (
                                 <div className="bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
-                                  <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-4 py-3 border-b-2 border-purple-300">
+                                  <div className="bg-gradient-to-r from-orange-100 to-pink-100 px-4 py-3 border-b-2 border-orange-300">
                                     <h4 className="text-sm font-bold text-gray-900">📊 Source Data Point</h4>
                                   </div>
                                   <div className="p-4">
                                     <div className="grid grid-cols-2 gap-3">
                                       {Object.entries(trendTableData).map(([key, value]) => (
                                         <div key={key} className="bg-gray-50 rounded p-3 border border-gray-200">
-                                          <p className="text-xs font-semibold text-purple-700 uppercase mb-1">
+                                          <p className="text-xs font-semibold text-orange-700 uppercase mb-1">
                                             {key.replace(/_/g, ' ')}
                                           </p>
                                           <p className="text-sm text-gray-900 font-medium">
@@ -586,11 +587,11 @@ Try clicking the quick action buttons below or type your own query!`,
                               return vizUrls.length > 0 && (
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
                                     Analysis Charts
                                   </div>
                                   {vizUrls.map((vizUrl, idx) => (
-                                    <div key={idx} className="bg-white rounded-lg border-2 border-purple-200 p-3 shadow-md">
+                                    <div key={idx} className="bg-white rounded-lg border-2 border-orange-200 p-3 shadow-md">
                                       <img
                                         src={`http://localhost:8000/${vizUrl}`}
                                         alt={`Analysis Chart ${idx + 1}`}
@@ -612,7 +613,7 @@ Try clicking the quick action buttons below or type your own query!`,
                         {message.workflow_type === 'collect_analyze' && message.visualizations && message.visualizations.length > 0 && (
                           <div className="mt-4 space-y-4">
                             <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                              <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                              <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
                               Analysis Results
                             </div>
                             {message.visualizations.map((vizUrl, idx) => (
@@ -635,7 +636,7 @@ Try clicking the quick action buttons below or type your own query!`,
                         {message.workflow_type === 'generate_report' && message.data && (
                           <div className="mt-4 space-y-4">
                             {/* Report Header */}
-                            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg p-4">
+                            <div className="bg-gradient-to-r from-blue-600 to-orange-600 text-white rounded-t-lg p-4">
                               <h2 className="text-lg font-bold flex items-center gap-2">
                                 📊 Weather Analysis Report
                               </h2>
@@ -675,7 +676,7 @@ Try clicking the quick action buttons below or type your own query!`,
                                     const restText = line.split('**').pop() || '';
                                     return (
                                       <p key={idx} className="text-sm mt-4 mb-2">
-                                        <span className="font-bold text-purple-700">{boldText}:</span>
+                                        <span className="font-bold text-orange-700">{boldText}:</span>
                                         <span className="text-gray-700">{restText}</span>
                                       </p>
                                     );
@@ -795,9 +796,9 @@ Try clicking the quick action buttons below or type your own query!`,
                         {/* REPORT FORMAT - For full_summary workflow */}
                         {message.workflow_type === 'full_summary' && message.data && (
                           <div className="mt-4 space-y-4">
-                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
+                            <div className="bg-gradient-to-r from-orange-50 to-blue-50 rounded-lg p-4 border border-orange-200">
                               <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                                <span className="w-1 h-4 bg-purple-600 rounded"></span>
+                                <span className="w-1 h-4 bg-orange-600 rounded"></span>
                                 Executive Summary
                               </h3>
                               
@@ -806,7 +807,7 @@ Try clicking the quick action buttons below or type your own query!`,
                                 <div className="space-y-3">
                                   {Object.entries(message.data.summary).map(([key, value]) => (
                                     <div key={key} className="bg-white rounded p-3 border border-gray-200">
-                                      <p className="text-xs font-semibold text-purple-700 uppercase mb-1">
+                                      <p className="text-xs font-semibold text-orange-700 uppercase mb-1">
                                         {key.replace(/_/g, ' ')}
                                       </p>
                                       <p className="text-sm text-gray-800">
@@ -856,7 +857,7 @@ Try clicking the quick action buttons below or type your own query!`,
                                 document.body.removeChild(link);
                                 URL.revokeObjectURL(url);
                               }}
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-xs font-medium rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all shadow-sm"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-orange-600 text-white text-xs font-medium rounded-lg hover:from-blue-700 hover:to-orange-700 transition-all shadow-sm"
                             >
                               <Download className="w-4 h-4" />
                               Download Report (JSON)
@@ -933,7 +934,7 @@ Try clicking the quick action buttons below or type your own query!`,
                     {(message.workflow_type || message.execution_time) && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         {message.workflow_type && (
-                          <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">
+                          <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
                             {message.workflow_type.replace('_', ' ')}
                           </span>
                         )}
@@ -965,13 +966,13 @@ Try clicking the quick action buttons below or type your own query!`,
             {/* Loading indicator */}
             {isLoading && (
               <div className="flex gap-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex-1">
                   <div className="inline-block bg-white border border-gray-200 shadow-sm rounded-2xl px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                      <Loader2 className="w-5 h-5 animate-spin text-orange-600" />
                       <span className="text-sm text-gray-600">Analyzing your request...</span>
                     </div>
                   </div>
@@ -1000,7 +1001,7 @@ Try clicking the quick action buttons below or type your own query!`,
                 <button
                   type="submit"
                   disabled={isLoading || !input.trim()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="bg-gradient-to-r from-blue-600 to-orange-600 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Send className="w-5 h-5" />
                   <span className="font-medium">Send</span>
@@ -1020,7 +1021,7 @@ Try clicking the quick action buttons below or type your own query!`,
                 <button
                   type="button"
                   onClick={() => setInput('Analyze temperature trends for the last 7 days')}
-                  className="text-xs px-4 py-2 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 rounded-full text-gray-700 transition-all border border-purple-200"
+                  className="text-xs px-4 py-2 bg-gradient-to-r from-orange-50 to-pink-50 hover:from-orange-100 hover:to-pink-100 rounded-full text-gray-700 transition-all border border-orange-200"
                   title="Returns analysis with visualizations"
                 >
                   � Analyze Trends (Charts)

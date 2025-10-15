@@ -87,7 +87,7 @@ export default function ChatWindow() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 z-50 group"
+          className="fixed bottom-6 right-6 bg-gradient-to-r from-orange-600 to-green-800 text-white p-4 rounded-full shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 z-50 group"
         >
           <MessageCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
           <div className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
@@ -98,11 +98,11 @@ export default function ChatWindow() {
 
       {/* Chat Window */}
       {isOpen && (
-        <div className={`fixed bottom-6 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-purple-100 overflow-hidden z-50 transition-all duration-300 ${
+        <div className={`fixed bottom-6 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-orange-100 overflow-hidden z-50 transition-all duration-300 ${
           isMinimized ? 'h-16' : 'h-[32rem]'
         }`}>
           {/* Chat Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-orange-600 to-green-800 text-white p-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
@@ -112,7 +112,7 @@ export default function ChatWindow() {
               </div>
               <div>
                 <h3 className="font-semibold">Weather Assistant</h3>
-                <p className="text-xs text-purple-100">Online • AI Powered</p>
+                <p className="text-xs text-orange-100">Online • AI Powered</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -134,7 +134,7 @@ export default function ChatWindow() {
           {!isMinimized && (
             <>
               {/* Chat Messages */}
-              <div className="h-80 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-purple-50/30 to-white">
+              <div className="h-80 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-orange-50/30 to-white">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
@@ -142,12 +142,12 @@ export default function ChatWindow() {
                   >
                     <div className={`max-w-xs px-4 py-2 rounded-2xl ${
                       msg.type === 'user' 
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' 
-                        : 'bg-white shadow-md border border-purple-100'
+                        ? 'bg-gradient-to-r from-orange-600 to-green-800 text-white' 
+                        : 'bg-white shadow-md border border-orange-100'
                     }`}>
                       <div className="flex items-start space-x-2">
                         {msg.type === 'bot' && (
-                          <div className="w-6 h-6 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                          <div className="w-6 h-6 bg-gradient-to-r from-orange-600 to-green-800 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                             <Sparkles className="w-3 h-3 text-white" />
                           </div>
                         )}
@@ -161,10 +161,10 @@ export default function ChatWindow() {
                             msg.type === 'user' ? 'justify-end' : 'justify-start'
                           }`}>
                             <Clock className={`w-3 h-3 ${
-                              msg.type === 'user' ? 'text-purple-200' : 'text-gray-400'
+                              msg.type === 'user' ? 'text-orange-200' : 'text-gray-400'
                             }`} />
                             <span className={`text-xs ${
-                              msg.type === 'user' ? 'text-purple-200' : 'text-gray-400'
+                              msg.type === 'user' ? 'text-orange-200' : 'text-gray-400'
                             }`}>
                               {formatTime(msg.timestamp)}
                             </span>
@@ -185,15 +185,15 @@ export default function ChatWindow() {
                 {/* Typing Indicator */}
                 {isTyping && (
                   <div className="flex justify-start">
-                    <div className="bg-white shadow-md border border-purple-100 px-4 py-2 rounded-2xl">
+                    <div className="bg-white shadow-md border border-orange-100 px-4 py-2 rounded-2xl">
                       <div className="flex items-center space-x-2">
-                        <div className="w-6 h-6 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 bg-gradient-to-r from-orange-600 to-green-800 rounded-full flex items-center justify-center">
                           <Sparkles className="w-3 h-3 text-white" />
                         </div>
                         <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-100"></div>
-                          <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-200"></div>
+                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce delay-100"></div>
+                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce delay-200"></div>
                         </div>
                       </div>
                     </div>
@@ -204,7 +204,7 @@ export default function ChatWindow() {
               </div>
 
               {/* Message Input */}
-              <form onSubmit={handleSendMessage} className="p-4 border-t border-purple-100 bg-white">
+              <form onSubmit={handleSendMessage} className="p-4 border-t border-orange-100 bg-white">
                 <div className="flex space-x-2">
                   <div className="flex-1 relative">
                     <input
@@ -212,13 +212,13 @@ export default function ChatWindow() {
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Ask about weather data..."
-                      className="w-full px-4 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200"
+                      className="w-full px-4 py-2 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={!message.trim() || isTyping}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-2 rounded-xl hover:from-purple-700 hover:to-indigo-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-gradient-to-r from-orange-600 to-green-800 text-white p-2 rounded-xl hover:from-orange-700 hover:to-green-900 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Send className="w-5 h-5" />
                   </button>

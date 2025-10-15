@@ -30,6 +30,9 @@ from api.chat_api import router as chat_router
 from api.dashboard_api import dashboard_router
 from api.forecast_api import forecast_router
 from api.reports_api import reports_router
+from api.news_api import news_router
+from api.daily_data_api import daily_data_router
+from api.historical_api import historical_router
 from db_config import DatabaseConfig
 from db_seed import create_tables_and_seed
 from security.auth_middleware import AuthenticationError, AuthorizationError
@@ -122,6 +125,9 @@ app.include_router(chat_router)
 app.include_router(dashboard_router)
 app.include_router(forecast_router)
 app.include_router(reports_router)
+app.include_router(news_router)
+app.include_router(daily_data_router)
+app.include_router(historical_router)
 
 # Mount static files for visualizations
 visualizations_dir = Path(__file__).parent / "visualizations"
@@ -300,7 +306,6 @@ if __name__ == "__main__":
         "main:app",
         host=host,
         port=port,
-        debug=debug,
         reload=reload,
         log_level=os.getenv("LOG_LEVEL", "info").lower()
     )

@@ -1,0 +1,121 @@
+{
+  "date": "2025-10-16",
+  "collection_time": "2025-10-16T01:34:09.915047",
+  "summary": {
+    "weather": {
+      "success": 0,
+      "failed": 0,
+      "total": 0
+    },
+    "air_quality": {
+      "success": 6,
+      "failed": 0,
+      "total": 6
+    },
+    "news": {
+      "success": 1,
+      "articles_collected": 0
+    },
+    "locations": [
+      "Colombo",
+      "Kandy",
+      "Galle",
+      "Jaffna",
+      "Trincomalee",
+      "Negombo"
+    ]
+  },
+  "details": {
+    "weather_results": {
+      "timestamp": "2025-10-16",
+      "total_locations": 6,
+      "successful": 6,
+      "failed": 0,
+      "details": [
+        {
+          "location": "Colombo",
+          "status": "success",
+          "temperature": 26.9,
+          "conditions": "Rain, Overcast",
+          "timestamp": "2025-10-16"
+        },
+        {
+          "location": "Kandy",
+          "status": "success",
+          "temperature": 22.7,
+          "conditions": "Rain, Partially cloudy",
+          "timestamp": "2025-10-16"
+        },
+        {
+          "location": "Galle",
+          "status": "success",
+          "temperature": 26.0,
+          "conditions": "Rain, Overcast",
+          "timestamp": "2025-10-16"
+        },
+        {
+          "location": "Jaffna",
+          "status": "success",
+          "temperature": 28.1,
+          "conditions": "Rain, Overcast",
+          "timestamp": "2025-10-16"
+        },
+        {
+          "location": "Trincomalee",
+          "status": "success",
+          "temperature": 28.1,
+          "conditions": "Rain, Overcast",
+          "timestamp": "2025-10-16"
+        },
+        {
+          "location": "Negombo",
+          "status": "success",
+          "temperature": 26.8,
+          "conditions": "Rain, Overcast",
+          "timestamp": "2025-10-16"
+        }
+      ],
+      "errors": []
+    },
+    "air_quality_results": {
+      "successful": 6,
+      "failed": 0,
+      "details": [
+        {
+          "location": "Colombo",
+          "status": "success"
+        },
+        {
+          "location": "Kandy",
+          "status": "success"
+        },
+        {
+          "location": "Galle",
+          "status": "success"
+        },
+        {
+          "location": "Jaffna",
+          "status": "success"
+        },
+        {
+          "location": "Trincomalee",
+          "status": "success"
+        },
+        {
+          "location": "Negombo",
+          "status": "success"
+        }
+      ]
+    },
+    "news_result": {
+      "status": "success",
+      "data": {
+        "success": true,
+        "collected": 0,
+        "skipped": 0,
+        "articles": []
+      },
+      "timestamp": "2025-10-16T01:34:09.914051"
+    }
+  }
+}

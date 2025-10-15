@@ -63,7 +63,7 @@ export default function Analytics() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
@@ -81,7 +81,7 @@ export default function Analytics() {
   // Admin Dashboard View
   if (user?.is_admin && analyticsData?.overview) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -139,8 +139,8 @@ export default function Analytics() {
             <div className="dashboard-card">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-purple-600" />
+                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <Users className="w-6 h-6 text-orange-600" />
                   </div>
                   <CheckCircle className="w-5 h-5 text-green-500" />
                 </div>
@@ -199,7 +199,7 @@ export default function Analytics() {
                     onClick={() => setSelectedTab(tab.id)}
                     className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                       selectedTab === tab.id
-                        ? 'border-purple-500 text-purple-600'
+                        ? 'border-orange-500 text-orange-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
                   >
@@ -241,13 +241,13 @@ export default function Analytics() {
                       <div key={index} className="bg-gray-50 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-gray-800">{endpoint.endpoint}</span>
-                          <span className="text-sm font-semibold text-purple-600">{endpoint.total_calls.toLocaleString()} calls</span>
+                          <span className="text-sm font-semibold text-orange-600">{endpoint.total_calls.toLocaleString()} calls</span>
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-600">
                           <span>Avg Response: {endpoint.avg_response_time}ms</span>
                           <div className="w-32 bg-gray-200 rounded-full h-1.5">
                             <div 
-                              className="bg-purple-500 h-1.5 rounded-full" 
+                              className="bg-orange-500 h-1.5 rounded-full" 
                               style={{ width: `${Math.min(100, (endpoint.total_calls / analyticsData.top_endpoints[0].total_calls) * 100)}%` }}
                             ></div>
                           </div>
@@ -267,7 +267,7 @@ export default function Analytics() {
                         {Object.entries(analyticsData.user_activity.users_by_tier || {}).map(([tier, count]) => (
                           <div key={tier} className="flex items-center justify-between bg-gray-50 rounded-lg p-4">
                             <span className="font-medium text-gray-800 capitalize">{tier}</span>
-                            <span className="text-lg font-bold text-purple-600">{count}</span>
+                            <span className="text-lg font-bold text-orange-600">{count}</span>
                           </div>
                         ))}
                       </div>
@@ -293,12 +293,12 @@ export default function Analytics() {
   // Regular User View
   const metrics = analyticsData?.userMetrics || {};
   return (
-    <div className="min-h-screen w-full p-6" style={{ background: 'linear-gradient(135deg, #F5EFFF 0%, #E5D9F2 50%, #CDC1FF 100%)' }}>
+    <div className="min-h-screen w-full p-6" style={{ background: 'linear-gradient(135deg, #F9F5F0 0%, #F2EAD3 50%, #F2EAD3 100%)' }}>
       <div className="w-full max-w-6xl mx-auto bg-white rounded-2xl shadow-xl p-6">
         <h1 className="text-3xl font-bold mb-6">My Usage Analytics</h1>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="p-4 rounded-lg border" style={{ borderColor: '#E5D9F2' }}>
+          <div className="p-4 rounded-lg border" style={{ borderColor: '#F2EAD3' }}>
             <Activity className="w-5 h-5 inline-block mr-2" /> API Calls
             <div className="text-2xl font-bold mt-2">{metrics.api_calls || 0}</div>
             <div className="text-sm text-gray-500 mt-1">
@@ -308,17 +308,17 @@ export default function Analytics() {
               <div className="text-xs text-red-500 mt-1">Limit reached - upgrade to continue</div>
             )}
           </div>
-          <div className="p-4 rounded-lg border" style={{ borderColor: '#E5D9F2' }}>
+          <div className="p-4 rounded-lg border" style={{ borderColor: '#F2EAD3' }}>
             <FileText className="w-5 h-5 inline-block mr-2" /> Reports Generated
             <div className="text-2xl font-bold mt-2">{metrics.reports_generated || 0}</div>
           </div>
-          <div className="p-4 rounded-lg border" style={{ borderColor: '#E5D9F2' }}>
+          <div className="p-4 rounded-lg border" style={{ borderColor: '#F2EAD3' }}>
             <Download className="w-5 h-5 inline-block mr-2" /> Data Downloads
             <div className="text-2xl font-bold mt-2">{metrics.data_downloads || 0}</div>
           </div>
         </div>
 
-        <div className="p-6 rounded-lg border bg-blue-50" style={{ borderColor: '#E5D9F2' }}>
+        <div className="p-6 rounded-lg border bg-blue-50" style={{ borderColor: '#F2EAD3' }}>
           <AlertCircle className="w-5 h-5 inline-block mr-2 text-blue-600" />
           <span className="font-semibold text-blue-900">Upgrade to Professional</span>
           <p className="text-sm text-blue-700 mt-2">Get access to advanced analytics, unlimited API calls, and premium features.</p>

@@ -8,12 +8,12 @@ const FaqPage = () => {
   const [filteredFaqs, setFilteredFaqs] = useState([]);
 
   const categories = [
-    { id: 'general', name: 'General', icon: HelpCircle, color: '#A294F9' },
-    { id: 'data', name: 'Data & Analytics', icon: BarChart3, color: '#CDC1FF' },
-    { id: 'features', name: 'Features', icon: Zap, color: '#E5D9F2' },
-    { id: 'technical', name: 'Technical', icon: Database, color: '#A294F9' },
-    { id: 'account', name: 'Account', icon: Users, color: '#CDC1FF' },
-    { id: 'pricing', name: 'Pricing', icon: Star, color: '#E5D9F2' }
+    { id: 'general', name: 'General', icon: HelpCircle, color: '#F4991A' },
+    { id: 'data', name: 'Data & Analytics', icon: BarChart3, color: '#F2EAD3' },
+    { id: 'features', name: 'Features', icon: Zap, color: '#F2EAD3' },
+    { id: 'technical', name: 'Technical', icon: Database, color: '#F4991A' },
+    { id: 'account', name: 'Account', icon: Users, color: '#F2EAD3' },
+    { id: 'pricing', name: 'Pricing', icon: Star, color: '#F2EAD3' }
   ];
 
   const faqData = {
@@ -200,16 +200,16 @@ const FaqPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{backgroundColor: '#F5EFFF'}}>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50" style={{backgroundColor: '#F9F5F0'}}>
       {/* Hero Section */}
       <section className="py-20 px-4 text-center">
         <div className="max-w-4xl mx-auto">
           <div className="inline-flex items-center justify-center mb-6">
-            <div className="p-4 rounded-full" style={{backgroundColor: '#E5D9F2'}}>
-              <HelpCircle className="w-12 h-12" style={{color: '#A294F9'}} />
+            <div className="p-4 rounded-full" style={{backgroundColor: '#F2EAD3'}}>
+              <HelpCircle className="w-12 h-12" style={{color: '#F4991A'}} />
             </div>
           </div>
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-orange-600 to-green-800 bg-clip-text text-transparent">
             Frequently Asked Questions
           </h1>
           <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto">
@@ -228,12 +228,12 @@ const FaqPage = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-12 pr-4 py-4 text-lg border-2 rounded-2xl focus:outline-none focus:ring-4 transition-all duration-200"
               style={{
-                borderColor: '#E5D9F2',
+                borderColor: '#F2EAD3',
                 backgroundColor: 'white',
-                focusRingColor: '#CDC1FF'
+                focusRingColor: '#F2EAD3'
               }}
-              onFocus={(e) => e.target.style.borderColor = '#A294F9'}
-              onBlur={(e) => e.target.style.borderColor = '#E5D9F2'}
+              onFocus={(e) => e.target.style.borderColor = '#F4991A'}
+              onBlur={(e) => e.target.style.borderColor = '#F2EAD3'}
             />
           </div>
         </div>
@@ -245,7 +245,7 @@ const FaqPage = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Category Sidebar */}
             <div className="lg:w-1/4">
-              <div className="bg-white rounded-2xl p-6 shadow-xl sticky top-6 border border-purple-100">
+              <div className="bg-white rounded-2xl p-6 shadow-xl sticky top-6 border border-orange-100">
                 <h3 className="text-lg font-semibold mb-6 text-gray-800">Categories</h3>
                 <div className="space-y-2">
                   {categories.map((category) => {
@@ -273,20 +273,20 @@ const FaqPage = () => {
                 </div>
 
                 {/* Quick Stats */}
-                <div className="mt-8 p-4 rounded-xl" style={{backgroundColor: '#F5EFFF'}}>
+                <div className="mt-8 p-4 rounded-xl" style={{backgroundColor: '#F9F5F0'}}>
                   <h4 className="font-semibold text-gray-800 mb-3">Quick Stats</h4>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total FAQs</span>
-                      <span className="font-semibold" style={{color: '#A294F9'}}>24</span>
+                      <span className="font-semibold" style={{color: '#F4991A'}}>24</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Categories</span>
-                      <span className="font-semibold" style={{color: '#A294F9'}}>6</span>
+                      <span className="font-semibold" style={{color: '#F4991A'}}>6</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Updated</span>
-                      <span className="font-semibold" style={{color: '#A294F9'}}>Today</span>
+                      <span className="font-semibold" style={{color: '#F4991A'}}>Today</span>
                     </div>
                   </div>
                 </div>
@@ -295,9 +295,9 @@ const FaqPage = () => {
 
             {/* FAQ Content */}
             <div className="lg:w-3/4">
-              <div className="bg-white rounded-2xl shadow-xl border border-purple-100 overflow-hidden">
+              <div className="bg-white rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
                 {/* Category Header */}
-                <div className="p-6 border-b border-purple-100" style={{backgroundColor: '#F5EFFF'}}>
+                <div className="p-6 border-b border-orange-100" style={{backgroundColor: '#F9F5F0'}}>
                   <div className="flex items-center space-x-3">
                     {categories.find(cat => cat.id === activeCategory) && (
                       <>
@@ -320,7 +320,7 @@ const FaqPage = () => {
                 </div>
 
                 {/* FAQ Items */}
-                <div className="divide-y divide-purple-100">
+                <div className="divide-y divide-orange-100">
                   {filteredFaqs.length > 0 ? (
                     filteredFaqs.map((faq, index) => (
                       <div key={faq.id} className="transition-all duration-200 hover:bg-gray-50">
@@ -329,7 +329,7 @@ const FaqPage = () => {
                           className="w-full px-6 py-6 text-left flex items-center justify-between group"
                         >
                           <div className="flex-1 pr-4">
-                            <h3 className="text-lg font-semibold text-gray-800 group-hover:text-purple-600 transition-colors">
+                            <h3 className="text-lg font-semibold text-gray-800 group-hover:text-orange-600 transition-colors">
                               {faq.question}
                             </h3>
                             <div className="flex flex-wrap gap-2 mt-2">
@@ -337,7 +337,7 @@ const FaqPage = () => {
                                 <span
                                   key={tag}
                                   className="px-2 py-1 text-xs rounded-full"
-                                  style={{backgroundColor: '#E5D9F2', color: '#6B46C1'}}
+                                  style={{backgroundColor: '#F2EAD3', color: '#6B46C1'}}
                                 >
                                   {tag}
                                 </span>
@@ -345,14 +345,14 @@ const FaqPage = () => {
                             </div>
                           </div>
                           <div className={`p-2 rounded-full transition-all duration-200 ${expandedItem === faq.id ? 'rotate-180' : ''}`}
-                               style={{backgroundColor: expandedItem === faq.id ? '#A294F9' : '#F3F4F6'}}>
+                               style={{backgroundColor: expandedItem === faq.id ? '#F4991A' : '#F3F4F6'}}>
                             <ChevronDown className={`w-5 h-5 ${expandedItem === faq.id ? 'text-white' : 'text-gray-600'}`} />
                           </div>
                         </button>
                         
                         {expandedItem === faq.id && (
                           <div className="px-6 pb-6 animate-in slide-in-from-top-2 duration-200">
-                            <div className="p-6 rounded-xl" style={{backgroundColor: '#F5EFFF'}}>
+                            <div className="p-6 rounded-xl" style={{backgroundColor: '#F9F5F0'}}>
                               <p className="text-gray-700 leading-relaxed text-base">
                                 {faq.answer}
                               </p>
@@ -365,7 +365,7 @@ const FaqPage = () => {
                                     className="px-3 py-1 text-sm rounded-full border transition-colors hover:shadow-md cursor-pointer"
                                     style={{
                                       backgroundColor: 'white',
-                                      borderColor: '#CDC1FF',
+                                      borderColor: '#F2EAD3',
                                       color: '#6B46C1'
                                     }}
                                   >
@@ -392,7 +392,7 @@ const FaqPage = () => {
                         <button
                           onClick={() => setSearchQuery('')}
                           className="mt-4 px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-105"
-                          style={{backgroundColor: '#A294F9'}}
+                          style={{backgroundColor: '#F4991A'}}
                         >
                           Clear Search
                         </button>
@@ -415,36 +415,36 @@ const FaqPage = () => {
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg" style={{backgroundColor: '#F5EFFF'}}>
-              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor: '#A294F9'}}>
+            <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg" style={{backgroundColor: '#F9F5F0'}}>
+              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor: '#F4991A'}}>
                 <MessageSquare className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold mb-2 text-gray-800">Live Chat</h3>
               <p className="text-gray-600 mb-4">Get instant help from our AI assistant or connect with our support team.</p>
-              <button className="px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-105" style={{backgroundColor: '#A294F9'}}>
+              <button className="px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-105" style={{backgroundColor: '#F4991A'}}>
                 Start Chat
               </button>
             </div>
 
-            <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg" style={{backgroundColor: '#E5D9F2'}}>
-              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor: '#CDC1FF'}}>
+            <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg" style={{backgroundColor: '#F2EAD3'}}>
+              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor: '#F2EAD3'}}>
                 <Globe className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold mb-2 text-gray-800">Documentation</h3>
               <p className="text-gray-600 mb-4">Explore our comprehensive guides, tutorials, and API documentation.</p>
               <button className="px-4 py-2 rounded-lg font-medium transition-all hover:scale-105 border-2" 
-                      style={{borderColor: '#CDC1FF', color: '#6B46C1', backgroundColor: 'white'}}>
+                      style={{borderColor: '#F2EAD3', color: '#6B46C1', backgroundColor: 'white'}}>
                 View Docs
               </button>
             </div>
 
-            <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg" style={{backgroundColor: '#CDC1FF'}}>
-              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor: '#A294F9'}}>
+            <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg" style={{backgroundColor: '#F2EAD3'}}>
+              <div className="w-12 h-12 rounded-full mx-auto mb-4 flex items-center justify-center" style={{backgroundColor: '#F4991A'}}>
                 <Users className="w-6 h-6 text-white" />
               </div>
               <h3 className="text-lg font-semibold mb-2 text-gray-800">Contact Support</h3>
               <p className="text-gray-600 mb-4">Reach out to our support team for personalized assistance and guidance.</p>
-              <button className="px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-105" style={{backgroundColor: '#A294F9'}}>
+              <button className="px-4 py-2 rounded-lg text-white font-medium transition-all hover:scale-105" style={{backgroundColor: '#F4991A'}}>
                 Contact Us
               </button>
             </div>

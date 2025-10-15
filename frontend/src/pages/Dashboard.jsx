@@ -4,9 +4,11 @@ import { TrendingUp, Thermometer, Droplets, Wind, Sun, Eye, Activity, AlertTrian
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import UsageWidget from '../components/UsageWidget';
+import NewsAlerts from '../components/NewsAlerts';
+import HistoricalDataDownload from '../components/HistoricalDataDownload';
 
 export default function Dashboard() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, apiCall } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
@@ -30,8 +32,6 @@ export default function Dashboard() {
 
     const fetchDashboardData = async () => {
       try {
-        const { apiCall } = require('../contexts/AuthContext');
-        
         // Fetch real weather trends from backend
         const trendsResponse = await apiCall('/dashboard/weather/trends?days=7');
         if (trendsResponse?.daily_temps) {
@@ -119,14 +119,14 @@ export default function Dashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{ backgroundColor: '#F5EFFF' }}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center" style={{ backgroundColor: '#F9F5F0' }}>
         <div className="text-center p-8">
-          <Activity className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+          <Activity className="w-16 h-16 text-orange-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Dashboard Access Restricted</h2>
           <p className="text-gray-600 mb-6">Please log in to access your weather dashboard.</p>
           <a
             href="/login"
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-xl hover:from-orange-700 hover:to-green-900 transition-all duration-200"
           >
             Go to Login
           </a>
@@ -136,7 +136,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{ backgroundColor: '#F5EFFF' }}>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50" style={{ backgroundColor: '#F9F5F0' }}>
       <div className="container mx-auto px-4 py-8">
 
         <UsageWidget />
@@ -145,24 +145,12 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
             <div className="mb-4 lg:mb-0">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-green-800 bg-clip-text text-transparent">
                 Weather Dashboard
               </h1>
               <p className="text-gray-600 mt-2">
                 Welcome back, {user?.name}! Here's your weather analytics overview.
               </p>
-            </div>
-            <div className="flex items-center space-x-4">
-              <select
-                value={selectedTimeRange}
-                onChange={(e) => setSelectedTimeRange(e.target.value)}
-                className="px-4 py-2 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-              >
-                <option value="24h">Last 24 Hours</option>
-                <option value="7d">Last 7 Days</option>
-                <option value="30d">Last 30 Days</option>
-                <option value="90d">Last 90 Days</option>
-              </select>
             </div>
           </div>
         </div>
@@ -170,7 +158,7 @@ export default function Dashboard() {
         {/* Quick Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {/* Current Temperature */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border" style={{borderColor: '#F2EAD3'}}>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Current Temperature</p>
@@ -188,7 +176,7 @@ export default function Dashboard() {
           </div>
 
           {/* Humidity */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Humidity</p>
@@ -206,7 +194,7 @@ export default function Dashboard() {
           </div>
 
           {/* Wind Speed */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">Wind Speed</p>
@@ -224,7 +212,7 @@ export default function Dashboard() {
           </div>
 
           {/* UV Index */}
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm">UV Index</p>
@@ -244,7 +232,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Temperature Trend Chart */}
           <div className="lg:col-span-2">
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-gray-800">Temperature Trend</h3>
                 <div className="flex space-x-2">
@@ -252,8 +240,8 @@ export default function Dashboard() {
                     onClick={() => setActiveTab('temperature')}
                     className={`px-3 py-1 rounded-lg text-sm transition-colors ${
                       activeTab === 'temperature'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'text-gray-600 hover:text-purple-600'
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'text-gray-600 hover:text-orange-600'
                     }`}
                   >
                     Temperature
@@ -262,8 +250,8 @@ export default function Dashboard() {
                     onClick={() => setActiveTab('humidity')}
                     className={`px-3 py-1 rounded-lg text-sm transition-colors ${
                       activeTab === 'humidity'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'text-gray-600 hover:text-purple-600'
+                        ? 'bg-orange-100 text-orange-700'
+                        : 'text-gray-600 hover:text-orange-600'
                     }`}
                   >
                     Humidity
@@ -305,7 +293,7 @@ export default function Dashboard() {
 
           {/* Regional Weather Distribution */}
           <div className="space-y-6">
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Regional Distribution</h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -333,7 +321,7 @@ export default function Dashboard() {
             </div>
 
             {/* Recent Alerts */}
-            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+            <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Recent Alerts</h3>
               <div className="space-y-3">
                 {alerts.map((alert) => (
@@ -358,9 +346,19 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* Historical Data Download Section */}
+        <div className="mt-8">
+          <HistoricalDataDownload />
+        </div>
+
+        {/* News & Alerts Section */}
+        <div className="mt-8">
+          <NewsAlerts />
+        </div>
+
         {/* Weekly Overview */}
         <div className="mt-8">
-          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-purple-100">
+          <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-orange-100">
             <h3 className="text-xl font-semibold text-gray-800 mb-6">Weekly Overview</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

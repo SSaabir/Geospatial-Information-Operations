@@ -125,14 +125,14 @@ export default function Chat() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 flex items-center justify-center" style={{backgroundColor: '#F5EFFF'}}>
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center" style={{backgroundColor: '#F9F5F0'}}>
         <div className="text-center p-8">
-          <MessageSquare className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+          <MessageSquare className="w-16 h-16 text-orange-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Chat Access Restricted</h2>
           <p className="text-gray-600 mb-6">Please log in to access the weather assistant chat.</p>
           <a
             href="/login"
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-xl hover:from-orange-700 hover:to-green-900 transition-all duration-200"
           >
             Go to Login
           </a>
@@ -146,7 +146,7 @@ export default function Chat() {
   const hasProAccess = userTier === 'professional';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50" style={{backgroundColor: '#F5EFFF'}}>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50" style={{backgroundColor: '#F9F5F0'}}>
       <div className="container mx-auto px-4 py-8">
         {/* Tier Restriction Banner */}
         {!hasProAccess && (
@@ -180,8 +180,8 @@ export default function Chat() {
         )}
 
         {/* Chat Header */}
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-purple-100 mb-6">
-          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-orange-100 mb-6">
+          <div className="bg-gradient-to-r from-orange-600 to-green-800 text-white p-6 rounded-t-2xl">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
                 <div className="relative">
@@ -192,7 +192,7 @@ export default function Chat() {
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold">Weather Assistant</h1>
-                  <p className="text-purple-100">AI-Powered Climate Analytics • Online</p>
+                  <p className="text-orange-100">AI-Powered Climate Analytics • Online</p>
                 </div>
               </div>
               <div className="flex items-center space-x-2">
@@ -205,7 +205,7 @@ export default function Chat() {
           
           {/* User Info Bar */}
           {user && (
-            <div className="p-4 border-b border-purple-100 bg-purple-50/50">
+            <div className="p-4 border-b border-orange-100 bg-orange-50/50">
               <div className="flex items-center space-x-3">
                 <img 
                   src={user.avatar} 
@@ -222,9 +222,9 @@ export default function Chat() {
         </div>
 
         {/* Chat Container */}
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-purple-100 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-orange-100 overflow-hidden">
           {/* Messages Area */}
-          <div className="h-96 lg:h-[32rem] overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-purple-50/30 to-white">
+          <div className="h-96 lg:h-[32rem] overflow-y-auto p-6 space-y-6 bg-gradient-to-b from-orange-50/30 to-white">
             {messages.map((msg, index) => {
               const showDate = index === 0 || formatDate(msg.timestamp) !== formatDate(messages[index - 1].timestamp);
               
@@ -233,7 +233,7 @@ export default function Chat() {
                   {/* Date Separator */}
                   {showDate && (
                     <div className="flex justify-center mb-4">
-                      <div className="bg-purple-100 text-purple-600 px-3 py-1 rounded-full text-xs font-medium">
+                      <div className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-medium">
                         {formatDate(msg.timestamp)}
                       </div>
                     </div>
@@ -243,12 +243,12 @@ export default function Chat() {
                   <div className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs lg:max-w-md xl:max-w-lg px-4 py-3 rounded-2xl ${
                       msg.type === 'user' 
-                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' 
-                        : 'bg-white shadow-md border border-purple-100'
+                        ? 'bg-gradient-to-r from-orange-600 to-green-800 text-white' 
+                        : 'bg-white shadow-md border border-orange-100'
                     }`}>
                       <div className="flex items-start space-x-3">
                         {msg.type === 'bot' && (
-                          <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <div className="w-8 h-8 bg-gradient-to-r from-orange-600 to-green-800 rounded-xl flex items-center justify-center flex-shrink-0">
                             <Sparkles className="w-4 h-4 text-white" />
                           </div>
                         )}
@@ -262,10 +262,10 @@ export default function Chat() {
                             msg.type === 'user' ? 'justify-end' : 'justify-start'
                           }`}>
                             <Clock className={`w-3 h-3 ${
-                              msg.type === 'user' ? 'text-purple-200' : 'text-gray-400'
+                              msg.type === 'user' ? 'text-orange-200' : 'text-gray-400'
                             }`} />
                             <span className={`text-xs ${
-                              msg.type === 'user' ? 'text-purple-200' : 'text-gray-400'
+                              msg.type === 'user' ? 'text-orange-200' : 'text-gray-400'
                             }`}>
                               {formatTime(msg.timestamp)}
                             </span>
@@ -288,15 +288,15 @@ export default function Chat() {
             {/* Typing Indicator */}
             {isTyping && (
               <div className="flex justify-start">
-                <div className="bg-white shadow-md border border-purple-100 px-4 py-3 rounded-2xl">
+                <div className="bg-white shadow-md border border-orange-100 px-4 py-3 rounded-2xl">
                   <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center">
+                    <div className="w-8 h-8 bg-gradient-to-r from-orange-600 to-green-800 rounded-xl flex items-center justify-center">
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-100"></div>
-                      <div className="w-2 h-2 bg-purple-400 rounded-full animate-bounce delay-200"></div>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce delay-100"></div>
+                      <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce delay-200"></div>
                     </div>
                     <span className="text-xs text-gray-500">AI is thinking...</span>
                   </div>
@@ -308,7 +308,7 @@ export default function Chat() {
           </div>
 
           {/* Message Input */}
-          <div className="p-6 border-t border-purple-100 bg-white">
+          <div className="p-6 border-t border-orange-100 bg-white">
             <form onSubmit={handleSendMessage}>
               <div className="flex items-end space-x-3">
                 <div className="flex-1">
@@ -318,19 +318,19 @@ export default function Chat() {
                       value={message}
                       onChange={(e) => setMessage(e.target.value)}
                       placeholder="Ask about weather patterns, climate data, forecasts..."
-                      className="w-full px-4 py-3 pr-24 border border-purple-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 bg-purple-50/30"
+                      className="w-full px-4 py-3 pr-24 border border-orange-200 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all duration-200 bg-orange-50/30"
                       disabled={isTyping}
                     />
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
                       <button
                         type="button"
-                        className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-orange-600 transition-colors"
                       >
                         <Smile className="w-4 h-4" />
                       </button>
                       <button
                         type="button"
-                        className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors"
+                        className="p-1.5 text-gray-400 hover:text-orange-600 transition-colors"
                       >
                         <Paperclip className="w-4 h-4" />
                       </button>
@@ -343,7 +343,7 @@ export default function Chat() {
                 <button
                   type="submit"
                   disabled={!message.trim() || isTyping}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-3 rounded-xl hover:from-purple-700 hover:to-indigo-700 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
+                  className="bg-gradient-to-r from-orange-600 to-green-800 text-white p-3 rounded-xl hover:from-orange-700 hover:to-green-900 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group"
                 >
                   <Send className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
                 </button>

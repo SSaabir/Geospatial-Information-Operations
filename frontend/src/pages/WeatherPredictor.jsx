@@ -183,8 +183,8 @@ const WeatherPredictor = () => {
 
   const LoadingSpinner = () => (
     <div className="text-center py-8">
-      <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-purple-500"></div>
-      <div className="mt-3 text-purple-600 font-medium">Analyzing weather patterns...</div>
+      <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-orange-500"></div>
+      <div className="mt-3 text-orange-600 font-medium">Analyzing weather patterns...</div>
     </div>
   );
 
@@ -197,21 +197,21 @@ const WeatherPredictor = () => {
 
         {/* Tier Information Banner */}
         {!isAtLeast('researcher') && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl shadow-md">
+          <div className="mb-6 p-4 bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-xl shadow-md">
             <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-purple-600" />
+              <Lock className="w-6 h-6 text-orange-600" />
               <div className="flex-1">
-                <p className="text-purple-900 font-semibold">
+                <p className="text-orange-900 font-semibold">
                   🔒 Advanced Weather Prediction Features
                 </p>
-                <p className="text-purple-700 text-sm">
-                  Current tier: <span className="font-semibold uppercase text-purple-900">{tier}</span> • 
+                <p className="text-orange-700 text-sm">
+                  Current tier: <span className="font-semibold uppercase text-orange-900">{tier}</span> • 
                   Upgrade to <span className="font-semibold">Researcher</span> or <span className="font-semibold">Professional</span> for ML-powered predictions, historical data analysis, and dataset insights.
                 </p>
               </div>
               <a
                 href="/checkout?plan=researcher"
-                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 font-semibold text-sm whitespace-nowrap shadow-lg hover:shadow-xl"
+                className="px-4 py-2 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-lg hover:from-orange-700 hover:to-green-900 transition-all duration-200 font-semibold text-sm whitespace-nowrap shadow-lg hover:shadow-xl"
               >
                 Upgrade Now
               </a>
@@ -229,8 +229,8 @@ const WeatherPredictor = () => {
                 value={formData.datetime}
                 onChange={handleInputChange}
                 placeholder="3/15/2020"
-                className="p-4 border-2 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-lg"
-                style={{ borderColor: '#E5D9F2' }}
+                className="p-4 border-2 rounded-lg focus:outline-none focus:border-orange-400 transition-colors text-lg"
+                style={{ borderColor: '#F2EAD3' }}
                 required
               />
             </div>
@@ -243,8 +243,8 @@ const WeatherPredictor = () => {
                 value={formData.sunrise}
                 onChange={handleInputChange}
                 placeholder="6:30:15 AM"
-                className="p-4 border-2 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-lg"
-                style={{ borderColor: '#E5D9F2' }}
+                className="p-4 border-2 rounded-lg focus:outline-none focus:border-orange-400 transition-colors text-lg"
+                style={{ borderColor: '#F2EAD3' }}
                 required
               />
             </div>
@@ -257,8 +257,8 @@ const WeatherPredictor = () => {
                 value={formData.sunset}
                 onChange={handleInputChange}
                 placeholder="6:45:20 PM"
-                className="p-4 border-2 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-lg"
-                style={{ borderColor: '#E5D9F2' }}
+                className="p-4 border-2 rounded-lg focus:outline-none focus:border-orange-400 transition-colors text-lg"
+                style={{ borderColor: '#F2EAD3' }}
                 required
               />
             </div>
@@ -272,8 +272,8 @@ const WeatherPredictor = () => {
                 value={formData.humidity}
                 onChange={handleInputChange}
                 placeholder="68"
-                className="p-4 border-2 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-lg"
-                style={{ borderColor: '#E5D9F2' }}
+                className="p-4 border-2 rounded-lg focus:outline-none focus:border-orange-400 transition-colors text-lg"
+                style={{ borderColor: '#F2EAD3' }}
                 required
               />
             </div>
@@ -287,8 +287,8 @@ const WeatherPredictor = () => {
                 value={formData.sealevelpressure}
                 onChange={handleInputChange}
                 placeholder="1015.2"
-                className="p-4 border-2 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-lg"
-                style={{ borderColor: '#E5D9F2' }}
+                className="p-4 border-2 rounded-lg focus:outline-none focus:border-orange-400 transition-colors text-lg"
+                style={{ borderColor: '#F2EAD3' }}
                 required
               />
             </div>
@@ -302,8 +302,8 @@ const WeatherPredictor = () => {
                 value={formData.temp}
                 onChange={handleInputChange}
                 placeholder="18.5"
-                className="p-4 border-2 rounded-lg focus:outline-none focus:border-purple-400 transition-colors text-lg"
-                style={{ borderColor: '#E5D9F2' }}
+                className="p-4 border-2 rounded-lg focus:outline-none focus:border-orange-400 transition-colors text-lg"
+                style={{ borderColor: '#F2EAD3' }}
                 required
               />
             </div>
@@ -315,7 +315,7 @@ const WeatherPredictor = () => {
               onClick={handlePredict}
               disabled={loading}
               className="px-8 py-4 rounded-lg font-semibold text-white transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg, #A294F9 0%, #CDC1FF 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #F4991A 0%, #F2EAD3 100%)' }}
             >
               🔮 Predict Weather
             </button>
@@ -325,7 +325,7 @@ const WeatherPredictor = () => {
               onClick={loadDatasetInfo}
               disabled={loading}
               className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              style={{ borderColor: '#F2EAD3', backgroundColor: '#F9F5F0' }}
             >
               📊 Dataset Info
             </button>
@@ -335,7 +335,7 @@ const WeatherPredictor = () => {
               onClick={findSimilar}
               disabled={loading}
               className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52 disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              style={{ borderColor: '#F2EAD3', backgroundColor: '#F9F5F0' }}
             >
               🔍 Find Similar
             </button>
@@ -344,7 +344,7 @@ const WeatherPredictor = () => {
               type="button"
               onClick={fillExample}
               className="px-8 py-4 rounded-lg font-semibold text-gray-800 border-2 transition-all duration-300 hover:transform hover:-translate-y-1 hover:shadow-lg text-lg min-w-52"
-              style={{ borderColor: '#E5D9F2', backgroundColor: '#F5EFFF' }}
+              style={{ borderColor: '#F2EAD3', backgroundColor: '#F9F5F0' }}
             >
               📝 Fill Example
             </button>
@@ -360,8 +360,8 @@ const WeatherPredictor = () => {
         )}
 
         {activeView === 'result' && prediction && !loading && (
-          <div className="mt-8 p-6 rounded-xl border-l-4" style={{ backgroundColor: '#F5EFFF', borderColor: '#A294F9' }}>
-            <div className="text-center p-6 rounded-lg text-white mb-6" style={{ background: 'linear-gradient(135deg, #A294F9 0%, #CDC1FF 100%)' }}>
+          <div className="mt-8 p-6 rounded-xl border-l-4" style={{ backgroundColor: '#F9F5F0', borderColor: '#F4991A' }}>
+            <div className="text-center p-6 rounded-lg text-white mb-6" style={{ background: 'linear-gradient(135deg, #F4991A 0%, #F2EAD3 100%)' }}>
               <h2 className="text-2xl font-bold mb-2">🌤️ Predicted Condition</h2>
               <div className="text-4xl font-bold mb-4">{prediction.prediction}</div>
               {prediction.confidence && (
@@ -383,11 +383,11 @@ const WeatherPredictor = () => {
 
             <div className="space-y-6">
               {prediction.all_probabilities && Object.keys(prediction.all_probabilities).length > 0 && (
-                <div className="bg-white p-5 rounded-lg border-2" style={{ borderColor: '#E5D9F2' }}>
-                  <h3 className="text-xl font-semibold mb-4" style={{ color: '#A294F9' }}>📊 All Predictions (Probability)</h3>
+                <div className="bg-white p-5 rounded-lg border-2" style={{ borderColor: '#F2EAD3' }}>
+                  <h3 className="text-xl font-semibold mb-4" style={{ color: '#F4991A' }}>📊 All Predictions (Probability)</h3>
                   <div className="space-y-2">
                     {Object.entries(prediction.all_probabilities).slice(0, 5).map(([condition, prob]) => (
-                      <div key={condition} className="flex items-center justify-between p-3 rounded" style={{ backgroundColor: '#F5EFFF' }}>
+                      <div key={condition} className="flex items-center justify-between p-3 rounded" style={{ backgroundColor: '#F9F5F0' }}>
                         <span className="font-medium">{condition}</span>
                         <div className="flex items-center gap-3">
                           <div className="w-32 bg-gray-200 rounded-full h-3">
@@ -395,11 +395,11 @@ const WeatherPredictor = () => {
                               className="h-3 rounded-full"
                               style={{ 
                                 width: `${prob * 100}%`,
-                                background: 'linear-gradient(90deg, #A294F9, #CDC1FF)'
+                                background: 'linear-gradient(90deg, #F4991A, #F2EAD3)'
                               }}
                             ></div>
                           </div>
-                          <span className="font-semibold text-purple-600 w-16 text-right">{(prob * 100).toFixed(1)}%</span>
+                          <span className="font-semibold text-orange-600 w-16 text-right">{(prob * 100).toFixed(1)}%</span>
                         </div>
                       </div>
                     ))}
@@ -408,8 +408,8 @@ const WeatherPredictor = () => {
               )}
 
               {prediction.groq_explanation && (
-                <div className="bg-white p-5 rounded-lg border-2" style={{ borderColor: '#E5D9F2' }}>
-                  <h3 className="text-xl font-semibold mb-3 flex items-center" style={{ color: '#A294F9' }}>
+                <div className="bg-white p-5 rounded-lg border-2" style={{ borderColor: '#F2EAD3' }}>
+                  <h3 className="text-xl font-semibold mb-3 flex items-center" style={{ color: '#F4991A' }}>
                     🤖 AI Analysis
                   </h3>
                   <p className="text-gray-700 leading-relaxed">{prediction.groq_explanation}</p>
@@ -417,13 +417,13 @@ const WeatherPredictor = () => {
               )}
 
               {prediction.processed_features && Object.keys(prediction.processed_features).length > 0 && (
-                <div className="bg-white p-5 rounded-lg border-2" style={{ borderColor: '#E5D9F2' }}>
-                  <h3 className="text-xl font-semibold mb-4" style={{ color: '#A294F9' }}>⚙️ Processed Features</h3>
+                <div className="bg-white p-5 rounded-lg border-2" style={{ borderColor: '#F2EAD3' }}>
+                  <h3 className="text-xl font-semibold mb-4" style={{ color: '#F4991A' }}>⚙️ Processed Features</h3>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {Object.entries(prediction.processed_features).map(([key, value]) => (
-                      <div key={key} className="text-center p-3 rounded-lg" style={{ backgroundColor: '#F5EFFF' }}>
+                      <div key={key} className="text-center p-3 rounded-lg" style={{ backgroundColor: '#F9F5F0' }}>
                         <div className="text-xs text-gray-600 mb-1">{key.replace(/_/g, ' ')}</div>
-                        <div className="font-semibold text-purple-700">
+                        <div className="font-semibold text-orange-700">
                           {typeof value === 'number' ? value.toFixed(3) : value}
                         </div>
                       </div>
@@ -436,29 +436,29 @@ const WeatherPredictor = () => {
         )}
 
         {activeView === 'dataset' && datasetInfo && !loading && (
-          <div className="mt-8 p-6 rounded-xl border-l-4" style={{ backgroundColor: '#F5EFFF', borderColor: '#A294F9' }}>
-            <h3 className="text-2xl font-semibold mb-6" style={{ color: '#A294F9' }}>📊 Training Dataset Information</h3>
+          <div className="mt-8 p-6 rounded-xl border-l-4" style={{ backgroundColor: '#F9F5F0', borderColor: '#F4991A' }}>
+            <h3 className="text-2xl font-semibold mb-6" style={{ color: '#F4991A' }}>📊 Training Dataset Information</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-              <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+              <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                 <strong>Total Records</strong><br />
                 {datasetInfo.total_records}
               </div>
-              <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+              <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                 <strong>Date Range</strong><br />
                 {datasetInfo.date_range.start} to {datasetInfo.date_range.end}
               </div>
-              <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+              <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                 <strong>Conditions</strong><br />
                 {Object.keys(datasetInfo.conditions_distribution).length} types
               </div>
             </div>
 
             <div className="mb-6">
-              <h4 className="text-lg font-semibold mb-3" style={{ color: '#A294F9' }}>🌤️ Weather Conditions Distribution:</h4>
+              <h4 className="text-lg font-semibold mb-3" style={{ color: '#F4991A' }}>🌤️ Weather Conditions Distribution:</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 {Object.entries(datasetInfo.conditions_distribution).map(([condition, count]) => (
-                  <div key={condition} className="text-center p-3 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+                  <div key={condition} className="text-center p-3 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                     <strong>{condition}</strong><br />
                     {count} records
                   </div>
@@ -467,19 +467,19 @@ const WeatherPredictor = () => {
             </div>
 
             <div>
-              <h4 className="text-lg font-semibold mb-3" style={{ color: '#A294F9' }}>📈 Feature Statistics:</h4>
+              <h4 className="text-lg font-semibold mb-3" style={{ color: '#F4991A' }}>📈 Feature Statistics:</h4>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+                <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                   <strong>Temperature</strong><br />
                   {datasetInfo.feature_statistics.temperature.min.toFixed(1)}°C to {datasetInfo.feature_statistics.temperature.max.toFixed(1)}°C<br />
                   Avg: {datasetInfo.feature_statistics.temperature.mean.toFixed(1)}°C
                 </div>
-                <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+                <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                   <strong>Humidity</strong><br />
                   {datasetInfo.feature_statistics.humidity.min.toFixed(1)}% to {datasetInfo.feature_statistics.humidity.max.toFixed(1)}%<br />
                   Avg: {datasetInfo.feature_statistics.humidity.mean.toFixed(1)}%
                 </div>
-                <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+                <div className="text-center p-4 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                   <strong>Pressure</strong><br />
                   {datasetInfo.feature_statistics.pressure.min.toFixed(1)} to {datasetInfo.feature_statistics.pressure.max.toFixed(1)} hPa<br />
                   Avg: {datasetInfo.feature_statistics.pressure.mean.toFixed(1)} hPa
@@ -490,18 +490,18 @@ const WeatherPredictor = () => {
         )}
 
         {activeView === 'similar' && similarConditions && !loading && (
-          <div className="mt-8 p-6 rounded-xl border-l-4" style={{ backgroundColor: '#F5EFFF', borderColor: '#A294F9' }}>
-            <h3 className="text-2xl font-semibold mb-6" style={{ color: '#A294F9' }}>🔍 Similar Historical Conditions</h3>
+          <div className="mt-8 p-6 rounded-xl border-l-4" style={{ backgroundColor: '#F9F5F0', borderColor: '#F4991A' }}>
+            <h3 className="text-2xl font-semibold mb-6" style={{ color: '#F4991A' }}>🔍 Similar Historical Conditions</h3>
             
             <p className="mb-6 text-lg"><strong>Found {similarConditions.found_similar} similar historical conditions</strong></p>
 
             {similarConditions.found_similar > 0 && (
               <>
                 <div className="mb-6">
-                  <h4 className="text-lg font-semibold mb-3" style={{ color: '#A294F9' }}>🏆 Most Common Conditions:</h4>
+                  <h4 className="text-lg font-semibold mb-3" style={{ color: '#F4991A' }}>🏆 Most Common Conditions:</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     {Object.entries(similarConditions.most_common_conditions).map(([condition, count]) => (
-                      <div key={condition} className="text-center p-3 rounded-lg bg-white border" style={{ borderColor: '#E5D9F2' }}>
+                      <div key={condition} className="text-center p-3 rounded-lg bg-white border" style={{ borderColor: '#F2EAD3' }}>
                         <strong>{condition}</strong><br />
                         {count} times
                       </div>
@@ -510,10 +510,10 @@ const WeatherPredictor = () => {
                 </div>
 
                 <div>
-                  <h4 className="text-lg font-semibold mb-3" style={{ color: '#A294F9' }}>📋 Recent Historical Matches:</h4>
+                  <h4 className="text-lg font-semibold mb-3" style={{ color: '#F4991A' }}>📋 Recent Historical Matches:</h4>
                   <div className="overflow-x-auto">
-                    <table className="w-full bg-white rounded-lg overflow-hidden border" style={{ borderColor: '#E5D9F2' }}>
-                      <thead style={{ backgroundColor: '#F5EFFF' }}>
+                    <table className="w-full bg-white rounded-lg overflow-hidden border" style={{ borderColor: '#F2EAD3' }}>
+                      <thead style={{ backgroundColor: '#F9F5F0' }}>
                         <tr>
                           <th className="p-3 text-left">Date</th>
                           <th className="p-3 text-left">Condition</th>
@@ -524,7 +524,7 @@ const WeatherPredictor = () => {
                       </thead>
                       <tbody>
                         {similarConditions.historical_matches.map((match, index) => (
-                          <tr key={index} className="border-b" style={{ borderColor: '#E5D9F2' }}>
+                          <tr key={index} className="border-b" style={{ borderColor: '#F2EAD3' }}>
                             <td className="p-3">{match.datetime}</td>
                             <td className="p-3"><strong>{match.conditions}</strong></td>
                             <td className="p-3">{match.temp.toFixed(1)}°C</td>

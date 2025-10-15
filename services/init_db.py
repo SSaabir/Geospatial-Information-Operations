@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from models.user import Base, UserDB
+from models.news import NewsArticleDB
 from db_config import DatabaseConfig
 from security.jwt_handler import get_password_hash
 from dotenv import load_dotenv

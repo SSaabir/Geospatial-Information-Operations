@@ -6,8 +6,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text, func
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
-import pandas as pd
-import os
 
 from security.auth_middleware import get_current_user
 from models.user import UserDB
@@ -120,37 +118,48 @@ async def get_dashboard_stats(
 
 @dashboard_router.get("/weather/current")
 async def get_current_weather(
-    current_user: UserDB = Depends(get_current_user)
+    current_user: UserDB = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    city: str = "Colombo"
 ):
-    """Get current weather data from historical dataset"""
+    """Get latest weather data from database"""
     try:
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "history_colombo.csv")
+        # Query the most recent weather data for the specified city
+        query = text("""
+            SELECT 
+                city,
+                date,
+                temperature,
+                humidity,
+                wind_speed,
+                pressure,
+                conditions,
+                description,
+                precipsum,
+                cloudcover
+            FROM weather_data
+            WHERE LOWER(city) = LOWER(:city)
+            ORDER BY date DESC
+            LIMIT 1
+        """)
         
-        if not os.path.exists(csv_path):
-            # Return mock data if CSV not found
-            return {
-                "temperature": 28.5,
-                "humidity": 75,
-                "wind_speed": 12,
-                "pressure": 1013,
-                "conditions": "Partly Cloudy",
-                "location": "Colombo"
-            }
+        result = db.execute(query, {"city": city}).fetchone()
         
-        # Read the last few rows of data
-        df = pd.read_csv(csv_path)
-        if len(df) > 0:
-            latest = df.iloc[-1]
-            return {
-                "temperature": float(latest.get('temperature', 28.5)),
-                "humidity": float(latest.get('humidity', 75)),
-                "wind_speed": float(latest.get('windspeed', 12)),
-                "pressure": float(latest.get('pressure', 1013)),
-                "conditions": str(latest.get('conditions', 'Clear')),
-                "location": "Colombo"
-            }
-        else:
-            raise HTTPException(status_code=404, detail="No weather data available")
+        if not result:
+            raise HTTPException(status_code=404, detail=f"No weather data available for {city}")
+        
+        return {
+            "temperature": float(result[2]) if result[2] else 28.5,
+            "humidity": float(result[3]) if result[3] else 75,
+            "wind_speed": float(result[4]) if result[4] else 12,
+            "pressure": float(result[5]) if result[5] else 1013,
+            "conditions": str(result[6]) if result[6] else "Clear",
+            "description": str(result[7]) if result[7] else "",
+            "precipitation": float(result[8]) if result[8] else 0,
+            "cloud_cover": float(result[9]) if result[9] else 0,
+            "location": city,
+            "date": result[1].isoformat() if result[1] else None
+        }
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch weather data: {str(e)}")
@@ -159,44 +168,45 @@ async def get_current_weather(
 @dashboard_router.get("/weather/trends")
 async def get_weather_trends(
     current_user: UserDB = Depends(get_current_user),
-    days: int = 7
+    db: Session = Depends(get_db),
+    days: int = 7,
+    city: str = "Colombo"
 ):
-    """Get weather trends for the specified number of days"""
+    """Get weather trends for the specified number of days from database"""
     try:
-        csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "history_colombo.csv")
+        # Query the last N days of weather data
+        query = text("""
+            SELECT 
+                date,
+                temperature,
+                humidity,
+                wind_speed,
+                precipsum,
+                conditions
+            FROM weather_data
+            WHERE LOWER(city) = LOWER(:city)
+            ORDER BY date DESC
+            LIMIT :days
+        """)
         
-        if not os.path.exists(csv_path):
-            # Return mock trend data
-            return {
-                "daily_temps": [
-                    {"date": "2025-10-08", "temp": 28, "humidity": 76},
-                    {"date": "2025-10-09", "temp": 29, "humidity": 74},
-                    {"date": "2025-10-10", "temp": 31, "humidity": 68},
-                    {"date": "2025-10-11", "temp": 30, "humidity": 70},
-                    {"date": "2025-10-12", "temp": 27, "humidity": 78},
-                    {"date": "2025-10-13", "temp": 28, "humidity": 75},
-                    {"date": "2025-10-14", "temp": 29, "humidity": 72}
-                ]
-            }
+        results = db.execute(query, {"city": city, "days": days}).fetchall()
         
-        # Read and process data
-        df = pd.read_csv(csv_path)
+        if not results:
+            raise HTTPException(status_code=404, detail=f"No weather data available for {city}")
         
-        # Get last N days of data
-        if len(df) > days:
-            df = df.tail(days)
-        
-        # Prepare trend data
+        # Prepare trend data (reverse to get chronological order)
         trends = []
-        for idx, row in df.iterrows():
+        for row in reversed(results):
             trends.append({
-                "date": str(row.get('datetime', f"Day {idx + 1}")),
-                "temp": float(row.get('temperature', 28)),
-                "humidity": float(row.get('humidity', 75)),
-                "wind_speed": float(row.get('windspeed', 12))
+                "date": row[0].isoformat() if row[0] else "",
+                "temp": float(row[1]) if row[1] else 28,
+                "humidity": float(row[2]) if row[2] else 75,
+                "wind_speed": float(row[3]) if row[3] else 12,
+                "precipitation": float(row[4]) if row[4] else 0,
+                "conditions": str(row[5]) if row[5] else "Clear"
             })
         
-        return {"daily_temps": trends}
+        return {"daily_temps": trends, "city": city}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch weather trends: {str(e)}")

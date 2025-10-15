@@ -5,17 +5,17 @@ export default function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="bg-white/90 backdrop-blur-md border-t border-purple-100 mt-auto">
+    <footer className="bg-white/90 backdrop-blur-md border-t border-orange-100 mt-auto">
       <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* Brand Section */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-orange-600 to-green-800 rounded-xl flex items-center justify-center">
                 <Cloud className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-green-800 bg-clip-text text-transparent">
                   GeoWeather
                 </h3>
                 <p className="text-xs text-gray-500 -mt-1">Sri Lanka Weather Analytics</p>
@@ -39,27 +39,27 @@ export default function Footer() {
             <h4 className="font-semibold text-gray-800 mb-4">Platform</h4>
             <ul className="space-y-3">
               <li>
-                <a href="/dashboard" className="text-gray-600 hover:text-purple-600 transition-colors text-sm flex items-center space-x-2">
+                <a href="/dashboard" className="text-gray-600 hover:text-orange-600 transition-colors text-sm flex items-center space-x-2">
                   <span>Dashboard</span>
                 </a>
               </li>
               <li>
-                <a href="/chat" className="text-gray-600 hover:text-purple-600 transition-colors text-sm flex items-center space-x-2">
+                <a href="/chat" className="text-gray-600 hover:text-orange-600 transition-colors text-sm flex items-center space-x-2">
                   <span>AI Assistant</span>
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm flex items-center space-x-2">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm flex items-center space-x-2">
                   <span>Weather Analytics</span>
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm flex items-center space-x-2">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm flex items-center space-x-2">
                   <span>Climate Reports</span>
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm flex items-center space-x-2">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm flex items-center space-x-2">
                   <span>API Access</span>
                   <ExternalLink className="w-3 h-3" />
                 </a>
@@ -72,27 +72,27 @@ export default function Footer() {
             <h4 className="font-semibold text-gray-800 mb-4">Resources</h4>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
                   Documentation
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
                   Weather Data Sources
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
                   Research Papers
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
                   Climate Models
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-purple-600 transition-colors text-sm">
+                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
                   Support Center
                 </a>
               </li>
@@ -116,21 +116,21 @@ export default function Footer() {
             <div className="flex items-center space-x-3">
               <a
                 href="#"
-                className="w-8 h-8 bg-gray-100 hover:bg-purple-100 rounded-lg flex items-center justify-center transition-colors group"
+                className="w-8 h-8 bg-gray-100 hover:bg-orange-100 rounded-lg flex items-center justify-center transition-colors group"
               >
-                <Github className="w-4 h-4 text-gray-600 group-hover:text-purple-600" />
+                <Github className="w-4 h-4 text-gray-600 group-hover:text-orange-600" />
               </a>
               <a
                 href="#"
-                className="w-8 h-8 bg-gray-100 hover:bg-purple-100 rounded-lg flex items-center justify-center transition-colors group"
+                className="w-8 h-8 bg-gray-100 hover:bg-orange-100 rounded-lg flex items-center justify-center transition-colors group"
               >
-                <Twitter className="w-4 h-4 text-gray-600 group-hover:text-purple-600" />
+                <Twitter className="w-4 h-4 text-gray-600 group-hover:text-orange-600" />
               </a>
               <a
                 href="#"
-                className="w-8 h-8 bg-gray-100 hover:bg-purple-100 rounded-lg flex items-center justify-center transition-colors group"
+                className="w-8 h-8 bg-gray-100 hover:bg-orange-100 rounded-lg flex items-center justify-center transition-colors group"
               >
-                <Linkedin className="w-4 h-4 text-gray-600 group-hover:text-purple-600" />
+                <Linkedin className="w-4 h-4 text-gray-600 group-hover:text-orange-600" />
               </a>
             </div>
           </div>
@@ -146,13 +146,13 @@ export default function Footer() {
             </div>
             
             <div className="flex items-center space-x-6">
-              <a href="#" className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
+              <a href="#" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
                 Privacy Policy
               </a>
-              <a href="#" className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
+              <a href="#" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
                 Terms of Service
               </a>
-              <a href="#" className="text-sm text-gray-600 hover:text-purple-600 transition-colors">
+              <a href="#" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
                 Data Usage Policy
               </a>
             </div>

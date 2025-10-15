@@ -82,7 +82,7 @@ export default function AddAdminPanel() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all duration-200 shadow-lg"
+        className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-orange-600 to-green-800 text-white rounded-xl hover:from-orange-700 hover:to-green-900 transition-all duration-200 shadow-lg"
       >
         <UserPlus className="w-4 h-4" />
         <span>Manage Admins</span>
@@ -91,10 +91,10 @@ export default function AddAdminPanel() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-purple-200 p-6 mb-6">
+    <div className="bg-white rounded-2xl shadow-xl border border-orange-200 p-6 mb-6">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center">
+          <div className="w-10 h-10 bg-gradient-to-r from-orange-600 to-green-800 rounded-xl flex items-center justify-center">
             <Shield className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -136,14 +136,14 @@ export default function AddAdminPanel() {
           placeholder="Search users by name, email, or username..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
         />
       </div>
 
       {/* Users List */}
       {loading ? (
         <div className="text-center py-8">
-          <div className="w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+          <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto"></div>
           <p className="text-gray-600 mt-2">Loading users...</p>
         </div>
       ) : (
@@ -166,7 +166,7 @@ export default function AddAdminPanel() {
                     <div className="flex items-center space-x-2">
                       <p className="font-semibold text-gray-800">{user.username}</p>
                       {user.is_admin && (
-                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                           Admin
                         </span>
                       )}
@@ -186,7 +186,7 @@ export default function AddAdminPanel() {
                   ) : (
                     <button
                       onClick={() => promoteToAdmin(user.id, user.username)}
-                      className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium"
+                      className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors text-sm font-medium"
                     >
                       Make Admin
                     </button>

@@ -66,27 +66,27 @@ const OrchestratorDashboard = () => {
   const workflowConfig = {
     data_view: {
       icon: Eye,
-      color: 'bg-gradient-to-r from-purple-500 to-indigo-500',
-      lightColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-      textColor: 'text-purple-700',
-      ringColor: 'ring-purple-500'
+      color: 'bg-gradient-to-r from-orange-500 to-amber-500',
+      lightColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      textColor: 'text-orange-700',
+      ringColor: 'ring-orange-500'
     },
     collect_analyze: {
       icon: BarChart3,
-      color: 'bg-gradient-to-r from-indigo-500 to-blue-500',
-      lightColor: 'bg-indigo-50',
-      borderColor: 'border-indigo-200',
-      textColor: 'text-indigo-700',
-      ringColor: 'ring-indigo-500'
+      color: 'bg-gradient-to-r from-amber-500 to-blue-500',
+      lightColor: 'bg-amber-50',
+      borderColor: 'border-amber-200',
+      textColor: 'text-green-900',
+      ringColor: 'ring-amber-500'
     },
     full_summary: {
       icon: FileText,
-      color: 'bg-gradient-to-r from-purple-600 to-pink-500',
-      lightColor: 'bg-purple-50',
-      borderColor: 'border-purple-200',
-      textColor: 'text-purple-700',
-      ringColor: 'ring-purple-500'
+      color: 'bg-gradient-to-r from-orange-600 to-pink-500',
+      lightColor: 'bg-orange-50',
+      borderColor: 'border-orange-200',
+      textColor: 'text-orange-700',
+      ringColor: 'ring-orange-500'
 
     }
   };
@@ -193,7 +193,7 @@ const OrchestratorDashboard = () => {
         return <CheckCircle className="w-5 h-5 text-green-500" />;
       case 'processing':
 
-        return <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />;
+        return <Loader2 className="w-5 h-5 text-orange-500 animate-spin" />;
 
       case 'failed':
         return <XCircle className="w-5 h-5 text-red-500" />;
@@ -231,7 +231,7 @@ const OrchestratorDashboard = () => {
               <span className="text-sm font-semibold text-gray-700 mb-3 block">Active Agents</span>
               <div className="flex flex-wrap gap-2">
                 {workflowPreview.estimated_agents.map((agent, idx) => (
-                  <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                  <span key={idx} className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
                     {agent}
                   </span>
                 ))}
@@ -240,7 +240,7 @@ const OrchestratorDashboard = () => {
             <div className="bg-gray-50 rounded-xl p-4">
               <span className="text-sm font-semibold text-gray-700 mb-3 block">Estimated Duration</span>
               <div className="flex items-center space-x-2">
-                <Clock className="w-4 h-4 text-purple-500" />
+                <Clock className="w-4 h-4 text-orange-500" />
                 <span className="text-gray-700 font-medium">{workflowPreview.estimated_duration}</span>
               </div>
             </div>
@@ -718,7 +718,7 @@ const OrchestratorDashboard = () => {
     return (
       <div className="mb-6">
         <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <TrendingUp className="w-5 h-5 text-purple-600" />
+          <TrendingUp className="w-5 h-5 text-orange-600" />
           Trend Analysis
           {!intent.showAll && (
             <span className="text-sm font-normal text-gray-500">
@@ -808,9 +808,9 @@ const OrchestratorDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg p-4 border border-purple-200">
+        <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg p-4 border border-orange-200">
           <h5 className="font-medium text-gray-800 mb-3 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-purple-600" />
+            <BarChart3 className="w-4 h-4 text-orange-600" />
             Statistical Summary
           </h5>
           <div className={`grid grid-cols-2 ${relevantMetrics.length > 2 ? 'md:grid-cols-4' : 'md:grid-cols-2'} gap-4 text-sm`}>
@@ -1277,7 +1277,7 @@ const OrchestratorDashboard = () => {
               {result.visualizations && result.visualizations.length > 0 ? (
                 <div className="mb-6">
                   <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-purple-600" />
+                    <BarChart3 className="w-5 h-5 text-orange-600" />
                     Generated Visualizations
                     <span className="text-sm font-normal text-gray-500">({result.visualizations.length} chart{result.visualizations.length > 1 ? 's' : ''})</span>
                   </h4>
@@ -1292,8 +1292,8 @@ const OrchestratorDashboard = () => {
                       const fullUrl = `http://localhost:8000${vizUrl}`;
                       
                       return (
-                        <div key={idx} className="bg-white rounded-xl border-2 border-purple-200 overflow-hidden hover:shadow-xl transition-all">
-                          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-3">
+                        <div key={idx} className="bg-white rounded-xl border-2 border-orange-200 overflow-hidden hover:shadow-xl transition-all">
+                          <div className="bg-gradient-to-r from-orange-600 to-green-800 px-4 py-3">
                             <div className="flex items-center justify-between">
                               <p className="text-sm font-semibold text-white">{displayName}</p>
                               <button
@@ -1304,7 +1304,7 @@ const OrchestratorDashboard = () => {
                                 Open Full Size
                               </button>
                             </div>
-                            <p className="text-xs text-purple-200 mt-1">Click image to expand • Path: {vizUrl}</p>
+                            <p className="text-xs text-orange-200 mt-1">Click image to expand • Path: {vizUrl}</p>
                           </div>
                           <div className="relative bg-gray-50 p-4">
                             <div className="bg-white rounded-lg shadow-inner p-2">
@@ -1333,8 +1333,8 @@ const OrchestratorDashboard = () => {
                               />
                             </div>
                           </div>
-                          <div className="bg-purple-50 px-4 py-2 border-t border-purple-100">
-                            <p className="text-xs text-purple-700 flex items-center gap-2">
+                          <div className="bg-orange-50 px-4 py-2 border-t border-orange-100">
+                            <p className="text-xs text-orange-700 flex items-center gap-2">
                               <Info className="w-3 h-3" />
                               Auto-generated by Trend Analysis Agent
                             </p>
@@ -1469,11 +1469,11 @@ const OrchestratorDashboard = () => {
               {parsedResult.summary && (
                 <div>
                   <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-purple-600" />
+                    <FileText className="w-5 h-5 text-orange-600" />
                     Comprehensive Report
                   </h4>
-                  <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
-                    <pre className="text-sm text-purple-800 whitespace-pre-wrap">
+                  <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
+                    <pre className="text-sm text-orange-800 whitespace-pre-wrap">
                       {typeof parsedResult.summary === 'string' ? parsedResult.summary : JSON.stringify(parsedResult.summary, null, 2)}
                     </pre>
                   </div>
@@ -1499,11 +1499,11 @@ const OrchestratorDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center space-x-4 mb-8">
-          <div className="w-16 h-16 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+          <div className="w-16 h-16 bg-gradient-to-r from-orange-600 to-green-800 rounded-2xl flex items-center justify-center shadow-lg">
             <Bot className="w-8 h-8 text-white" />
           </div>
           <div>
@@ -1530,7 +1530,7 @@ const OrchestratorDashboard = () => {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
-                      ? 'border-purple-500 text-purple-600'
+                      ? 'border-orange-500 text-orange-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}
                 >
@@ -1547,7 +1547,7 @@ const OrchestratorDashboard = () => {
                 <div className="dashboard-card">
                   <div className="p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
                         <Search className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -1604,7 +1604,7 @@ const OrchestratorDashboard = () => {
                 <div className="dashboard-card">
                   <div className="p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
                         <BarChart3 className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -1643,7 +1643,7 @@ const OrchestratorDashboard = () => {
                 <div className="dashboard-card">
                   <div className="p-6">
                     <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
                         <FileText className="w-5 h-5 text-white" />
                       </div>
                       <div>
@@ -1658,10 +1658,10 @@ const OrchestratorDashboard = () => {
                       
                       return (
                         <div key={workflowType} className="mb-6 last:mb-0">
-                          <div className="dashboard-card border border-purple-200">
+                          <div className="dashboard-card border border-orange-200">
                             <div className="p-4">
                               <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center">
+                                <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-amber-500 rounded-lg flex items-center justify-center">
                                   <Icon className="w-4 h-4 text-white" />
                                 </div>
                                 <h4 className="font-semibold text-gray-800">
@@ -1677,7 +1677,7 @@ const OrchestratorDashboard = () => {
                                       setQuery(sampleQuery);
                                       setActiveTab('query');
                                     }}
-                                    className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all text-sm text-gray-700"
+                                    className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all text-sm text-gray-700"
                                   >
                                     {sampleQuery}
                                   </button>
