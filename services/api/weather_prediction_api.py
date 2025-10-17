@@ -6,12 +6,30 @@ import numpy as np
 import pandas as pd
 from datetime import datetime
 import os
+import sys
+import json
 from typing import Dict, Optional
 import logging
 import traceback
 
+# Add agents directory to path for responsible AI import
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'agents'))
+
+try:
+    from responsible_ai import run_responsible_ai_assessment, get_responsible_ai_framework
+    RESPONSIBLE_AI_AVAILABLE = True
+except Exception as e:
+    RESPONSIBLE_AI_AVAILABLE = False
+    print(f"⚠️ Responsible AI framework not available: {e}")
+
 # Set up logging
 logger = logging.getLogger(__name__)
+
+# Log Responsible AI availability
+if RESPONSIBLE_AI_AVAILABLE:
+    logger.info("✅ Responsible AI framework loaded for prediction endpoint")
+else:
+    logger.warning("⚠️ Responsible AI framework not available - predictions will run without ethics checks")
 
 # Create router
 weather_router = APIRouter(
@@ -246,14 +264,62 @@ async def predict_weather(data: WeatherInput):
             "temp": float(data.temp)
         }
         
+        # ✅ RESPONSIBLE AI ASSESSMENT (Non-blocking)
+        ethics_status = None
+        if RESPONSIBLE_AI_AVAILABLE:
+            try:
+                # Prepare prediction data for ethics assessment
+                prediction_data = [{
+                    "datetime": data.datetime,
+                    "predicted": prediction,
+                    "confidence": max_confidence,
+                    "temp": data.temp,
+                    "humidity": data.humidity,
+                    "sealevelpressure": data.sealevelpressure
+                }]
+                
+                model_metadata = {
+                    "name": "weather_prediction_model",
+                    "version": "1.0",
+                    "algorithm": "Random Forest",
+                    "endpoint": "/api/weather/predict",
+                    "timestamp": datetime.now().isoformat()
+                }
+                
+                # Run ethics assessment (this logs to database but doesn't block)
+                ethics_result = run_responsible_ai_assessment(
+                    prediction_data, 
+                    prediction_data,  # Using prediction as training data for basic check
+                    model_metadata
+                )
+                ethics_data = json.loads(ethics_result)
+                ethics_status = {
+                    "ethics_level": ethics_data.get("ethics_level", "unknown"),
+                    "transparency_score": ethics_data.get("transparency_score", 0),
+                    "checked": True
+                }
+                logger.info(f"🤖 Ethics check: {ethics_status['ethics_level']}")
+                
+            except Exception as ethics_error:
+                logger.warning(f"⚠️ Ethics assessment failed (non-critical): {ethics_error}")
+                ethics_status = {"checked": False, "error": str(ethics_error)}
+        else:
+            ethics_status = {"checked": False, "reason": "framework_unavailable"}
+        
         logger.info(f"✅ Prediction: {prediction} (Confidence: {max_confidence:.2%})")
         
-        return {
+        response = {
             "result": f"Predicted Weather Condition: {prediction}",
             "confidence": max_confidence,
             "all_probabilities": all_probabilities,
             "processed_features": processed_features
         }
+        
+        # Add ethics info if available (optional field, doesn't break existing clients)
+        if ethics_status and ethics_status.get("checked"):
+            response["ethics_assessment"] = ethics_status
+        
+        return response
         
     except ValueError as ve:
         logger.error(f"Validation error: {ve}")

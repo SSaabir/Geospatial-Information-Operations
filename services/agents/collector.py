@@ -290,10 +290,14 @@ def query_postgresql_tool(question: str) -> str:
             "note": f"Dataset truncated to prevent token overflow. Showing {sample_size}/{total_rows} records."
         }
 
-    # Step 1: generate SQL
+    # Step 1: generate SQL with instruction to always include date column
+    # Add explicit instruction for the LLM to include date column in SELECT
+    enhanced_question = f"{question} [IMPORTANT: Always include the 'date' column in your SELECT statement for trend analysis. Use: SELECT date, <other columns> FROM weather_data WHERE ...]"
+    
     try:
-        sql_raw = sql_chain.invoke({"question": question})
+        sql_raw = sql_chain.invoke({"question": enhanced_question})
         sql_clean = extract_sql(str(sql_raw)).rstrip(";")
+        print(f"🔍 Generated SQL: {sql_clean}")
     except Exception as e:
         error_result = json.dumps({"error": "sql_generation_failed", "details": str(e)})
         cache_result(query_hash, error_result)
@@ -309,21 +313,12 @@ def query_postgresql_tool(question: str) -> str:
         error_result = json.dumps({"error": "not_select", "raw": str(sql_raw)})
         return error_result
 
-    # Step 3: enforce reasonable LIMIT for token management
-    max_limit = 200  # Further reduced for token safety
-    if not re.search(r"\blimit\b", sql_clean, flags=re.IGNORECASE):
-        sql_exec = sql_clean + f" LIMIT {max_limit}"
-    else:
-        # Extract existing limit and cap it
-        limit_match = re.search(r"\blimit\s+(\d+)", sql_clean, flags=re.IGNORECASE)
-        if limit_match:
-            existing_limit = int(limit_match.group(1))
-            if existing_limit > max_limit:
-                sql_exec = re.sub(r"\blimit\s+\d+", f"LIMIT {max_limit}", sql_clean, flags=re.IGNORECASE)
-            else:
-                sql_exec = sql_clean
-        else:
-            sql_exec = sql_clean
+    # Step 3: NO LIMIT - Return all data for trend analysis
+    # Remove any LIMIT that LLM might have added
+    sql_exec = re.sub(r'\s*LIMIT\s+\d+\s*$', '', sql_clean, flags=re.IGNORECASE).strip()
+    
+    print(f"📊 NO LIMIT applied - will return ALL matching records")
+    print(f"✅ SQL Query: {sql_exec}")
 
     # Step 4: audit
     try:
@@ -332,7 +327,7 @@ def query_postgresql_tool(question: str) -> str:
     except Exception:
         pass
 
-    # Step 5: execute query
+    # Step 5: execute query and return ALL data (no truncation)
     try:
         # Use pandas.read_sql for robust, predictable results with column names
         import pandas as pd
@@ -355,39 +350,26 @@ def query_postgresql_tool(question: str) -> str:
         error_result = json.dumps({"error": "execution_failed", "details": str(e), "sql": sql_exec})
         return error_result
     
-    # Apply intelligent summarization
-    result_data = summarize_large_result(rows, max_rows=30, max_length=3000)  # More conservative limits
+    # Return ALL data without truncation
+    print(f"📊 Returning ALL {len(rows)} rows (no truncation)")
     
     output = {
         "sql": sql_exec,
         "row_count": len(rows),
-        "data": result_data,
-        "token_optimized": True,
+        "data": {
+            "rows": rows,
+            "summary": f"Complete dataset with {len(rows)} records",
+            "truncated": False
+        },
+        "token_optimized": False,
         "cached": False
     }
 
-    # Final safety check for JSON size
-    output_str = json.dumps(output, default=str)
-    if len(output_str) > 6000:  # Conservative limit
-        # Emergency truncation
-        emergency_summary = {
-            "sql": sql_exec,
-            "row_count": len(rows),
-            "data": {
-                "rows": rows[:5] if rows else [],  # Only 5 rows in emergency
-                "summary": f"Large dataset with {len(rows)} records. Emergency truncation applied.",
-                "truncated": True,
-                "note": "Result heavily truncated due to size constraints"
-            },
-            "token_optimized": True,
-            "emergency_truncated": True,
-            "cached": False
-        }
-        output_str = json.dumps(emergency_summary, default=str)
-
     # Cache the result
+    output_str = json.dumps(output, default=str)
     cache_result(query_hash, output_str)
     
+    print(f"✅ Found {len(rows)} records in database")
     return output_str
 
 
@@ -813,8 +795,8 @@ def _get_collector_app():
 def run_collector_agent(query: str) -> str:
 
     """
-    Run the collector agent with the given query and return the optimized output.
-    If the query is a direct SQL query, skip LLM/tool initialization and run SQL directly.
+    Run the collector agent with the given query and return the full output.
+    Returns complete dataset without truncation for downstream analysis.
     """
     import json
     global engine
@@ -863,27 +845,11 @@ def run_collector_agent(query: str) -> str:
         app = _get_collector_app()
         result = app.invoke({"input": query})
         output = result.get("output", "")
-        if len(output) > 10000:
-            try:
-                data = json.loads(output)
-                summary = {
-                    "query": query,
-                    "result_type": "summarized",
-                    "data_summary": "Large dataset truncated for token efficiency",
-                    "note": "Full data available through direct database queries"
-                }
-                if isinstance(data, dict):
-                    if "row_count" in data:
-                        summary["record_count"] = data["row_count"]
-                    if "data" in data and isinstance(data["data"], dict):
-                        if "summary" in data["data"]:
-                            summary["statistics"] = data["data"]["summary"]
-                        if "rows" in data["data"] and len(data["data"]["rows"]) > 0:
-                            summary["sample_data"] = data["data"]["rows"][:3]
-                return json.dumps(summary, default=str)
-            except (json.JSONDecodeError, Exception):
-                return output[:5000] + "... [TRUNCATED FOR TOKEN EFFICIENCY]"
+        
+        # Return full output without truncation - orchestrator will handle the data
+        print(f"📊 Returning full collector output ({len(output)} characters)")
         return output
+        
     except Exception as e:
         error_response = {
             "error": f"Collector agent failed: {str(e)}",
