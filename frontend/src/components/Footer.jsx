@@ -69,26 +69,26 @@ export default function Footer() {
 
           {/* Resources */}
           <div>
-            <h4 className="font-semibold text-gray-800 mb-4">Resources</h4>
+            <h4 className="font-semibold text-gray-800 mb-4">Company</h4>
             <ul className="space-y-3">
               <li>
-                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
-                  Documentation
+                <a href="/about" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
+                  About Us
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
-                  Weather Data Sources
+                <a href="/contact" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
+                  Contact Us
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
-                  Research Papers
+                <a href="/faq" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
+                  FAQ
                 </a>
               </li>
               <li>
-                <a href="#" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
-                  Climate Models
+                <a href="/pricing" className="text-gray-600 hover:text-orange-600 transition-colors text-sm">
+                  Pricing
                 </a>
               </li>
               <li>
@@ -146,11 +146,11 @@ export default function Footer() {
             </div>
             
             <div className="flex items-center space-x-6">
-              <a href="#" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
-                Privacy Policy
+              <a href="/terms" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
+                Terms of Service
               </a>
               <a href="#" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
-                Terms of Service
+                Privacy Policy
               </a>
               <a href="#" className="text-sm text-gray-600 hover:text-orange-600 transition-colors">
                 Data Usage Policy

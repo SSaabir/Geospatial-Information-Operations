@@ -8,6 +8,7 @@ export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isResourcesOpen, setIsResourcesOpen] = useState(false);
 
   const handleLogout = async () => {
     setIsDropdownOpen(false);
@@ -87,6 +88,66 @@ export default function Header() {
                 <span className="font-medium">Admin</span>
               </a>
             )}
+            
+            {/* Resources Dropdown */}
+            <div className="relative ml-2 border-l pl-6" style={{borderColor: '#F2EAD3'}}>
+              <button
+                onClick={() => setIsResourcesOpen(!isResourcesOpen)}
+                onMouseEnter={() => setIsResourcesOpen(true)}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 transition-all duration-200"
+                style={{backgroundColor: isResourcesOpen ? '#F9F5F0' : 'transparent'}}
+              >
+                <span className="font-medium">Resources</span>
+                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isResourcesOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {isResourcesOpen && (
+                <div 
+                  className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border z-50" 
+                  style={{borderColor: '#F2EAD3'}}
+                  onMouseLeave={() => setIsResourcesOpen(false)}
+                >
+                  <div className="py-2">
+                    <Link
+                      to="/pricing"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
+                      onClick={() => setIsResourcesOpen(false)}
+                    >
+                      <span>Pricing</span>
+                    </Link>
+                    <Link
+                      to="/about"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
+                      onClick={() => setIsResourcesOpen(false)}
+                    >
+                      <span>About Us</span>
+                    </Link>
+                    <Link
+                      to="/contact"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
+                      onClick={() => setIsResourcesOpen(false)}
+                    >
+                      <span>Contact Us</span>
+                    </Link>
+                    <Link
+                      to="/faq"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors"
+                      onClick={() => setIsResourcesOpen(false)}
+                    >
+                      <span>FAQ</span>
+                    </Link>
+                    <hr className="my-2 border-gray-100" />
+                    <Link
+                      to="/terms"
+                      className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:bg-orange-50 transition-colors text-sm"
+                      onClick={() => setIsResourcesOpen(false)}
+                    >
+                      <span>Terms of Service</span>
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
           </nav>
 
           {/* Right Side Actions */}
@@ -206,6 +267,46 @@ export default function Header() {
                   <span className="font-medium">Admin Panel</span>
                 </a>
               )}
+              
+              {/* Resources Section in Mobile */}
+              <div className="mt-4 pt-4 border-t border-gray-100 mx-2">
+                <p className="text-xs font-semibold text-gray-500 uppercase mb-2 px-4">Resources</p>
+                <Link
+                  to="/pricing"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span>Pricing</span>
+                </Link>
+                <Link
+                  to="/about"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span>About Us</span>
+                </Link>
+                <Link
+                  to="/contact"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span>Contact Us</span>
+                </Link>
+                <Link
+                  to="/faq"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span>FAQ</span>
+                </Link>
+                <Link
+                  to="/terms"
+                  className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 transition-all duration-200 rounded-lg text-sm"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  <span>Terms of Service</span>
+                </Link>
+              </div>
             </nav>
           </div>
         )}

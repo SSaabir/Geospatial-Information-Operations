@@ -22,9 +22,8 @@ const plans = [
     price: '$29',
     period: '/mo',
     features: [
-      '24-hour forecast + 7-day trends',
       'Last 1 year historical data (365 days)',
-      'Confidence intervals (65-90%)',
+      'Weather prediction available',
       'Interactive map with details',
       'Advanced visualization',
       'PDF/Excel report export',
@@ -37,8 +36,8 @@ const plans = [
     price: '$99',
     period: '/mo',
     features: [
-      'Multi-day forecast (7-30 days)',
       'Full 28-year archive (1997-2025)',
+      'Weather prediction available',
       'Advanced map layers (Satellite, Terrain)',
       'Priority support',
       'Enterprise analytics',
@@ -131,13 +130,12 @@ export default function Pricing() {
               <tbody>
                 {[
                   ['Historical Data Access', 'Last 30 days', 'Last 1 year (365 days)', 'Full archive (28 years)'],
-                  ['Forecast Data', 'Current + trends', '24hr + 7-day forecast', '7-30 day forecast'],
+                  ['Weather Prediction', 'Available', 'Available', 'Available'],
                   ['Trends & Graphs', 'Basic', 'Advanced visualization', 'Enterprise analytics'],
                   ['Reports', 'View only', 'PDF/Excel export', 'Custom templates'],
                   ['Map View', 'Basic', 'Interactive', 'Advanced layers'],
                   ['AI Operations / Month', '5', '5,000', 'Unlimited'],
                   ['Support', 'Community', 'Email support', 'Priority support'],
-                  ['Prediction (AI/ML)', 'Weather classifier', 'ML prediction (7-day + CI)', 'Advanced forecast (30-day)'],
                 ].map(([feature, free, res, pro], idx) => (
                   <tr
                     key={feature}

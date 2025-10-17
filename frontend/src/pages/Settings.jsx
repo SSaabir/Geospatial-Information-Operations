@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export default function Settings() {
   const { user, updateProfile, changeTier, changePassword, logout, apiCall, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
   
   // =======================
   // USER DATA
@@ -85,7 +87,8 @@ export default function Settings() {
 
   const cancelEdit = () => {
     setEditMode(false);
-    setCurrentAvatar(userData.avatar);
+    setUserData(originalData);
+    setCurrentAvatar(originalData.avatar);
   };
 
   const handleProfileChange = (e) => {
@@ -434,79 +437,80 @@ export default function Settings() {
                   </form>
                 </div>
 
-                {/* Tier Management Section */}
+                {/* Subscription Management Section */}
                 <div className="border-t border-gray-300 pt-10">
                   <h3 className="text-xl font-semibold mb-6 flex items-center gap-2">🎯 Subscription Management</h3>
 
-                  <div className="mb-6">
-                    <label className="block text-gray-700 font-semibold mb-2">Select Your Tier</label>
-                    <select
-                      value={userData.tier}
-                      onChange={handleTierChange}
-                      className="w-full p-4 border-2 border-[#E0DCEF] rounded-lg bg-[#F0F0F7] focus:outline-none focus:border-[#9481E3] focus:bg-white disabled:opacity-50"
-                      disabled={isLoading}
-                    >
-                      <option value="free">Free - Basic features for getting started</option>
-                      <option value="researcher">Researcher - Advanced tools for research</option>
-                      <option value="professional">Professional - Full access with premium support</option>
-                    </select>
-                    <div className="text-gray-500 text-sm italic mt-2">
-                      {isLoading ? "Updating tier..." : "Choose the tier that best fits your needs"}
+                  <div className="mb-6 p-6 bg-[#F0F0F7] rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-500 uppercase mb-2">Current Plan</div>
+                        <div className="text-2xl font-bold">
+                          <span className={updateTierBadge(userData.tier)}>{userData.tier.toUpperCase()}</span>
+                        </div>
+                        <p className="text-gray-600 mt-2">
+                          {userData.tier === 'free' && 'Basic features for getting started'}
+                          {userData.tier === 'researcher' && 'Advanced tools for research'}
+                          {userData.tier === 'professional' && 'Full access with premium support'}
+                        </p>
+                      </div>
+                      <div>
+                        <button
+                          onClick={() => navigate('/pricing')}
+                          className="px-6 py-3 bg-gradient-to-br from-[#9481E3] to-[#C7BCE6] text-white rounded-lg font-semibold hover:shadow-lg transition-all"
+                        >
+                          {userData.tier === 'free' ? '⬆️ Upgrade Plan' : '🔄 Change Plan'}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Subscription Cancellation Section */}
-                {userData.tier !== 'free' && (
-                  <div className="border-t border-gray-300 pt-10 mb-10">
-                    <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">❌ Cancel Subscription</h3>
-                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
-                      <p className="text-gray-700 mb-4">
-                        Cancelling your subscription will downgrade your account to the <strong>Free</strong> tier. 
-                        You'll lose access to premium features including:
-                      </p>
-                      <ul className="list-disc list-inside text-gray-600 mb-4 space-y-1">
-                        <li>AI-powered weather analytics chat</li>
-                        <li>Advanced prediction models</li>
-                        <li>Custom reports and visualizations</li>
-                        <li>Priority support</li>
-                      </ul>
-                      <button
-                        onClick={async () => {
-                          if (window.confirm('Are you sure you want to cancel your subscription? This action will downgrade you to the free tier immediately.')) {
-                            setIsLoading(true);
-                            try {
-                              const response = await fetch(`${API_BASE_URL}/billing/cancel-subscription`, {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+                  {/* Subscription Cancellation Section */}
+                  {userData.tier !== 'free' && (
+                    <div className="mb-6">
+                      <h4 className="text-lg font-semibold mb-3 flex items-center gap-2 text-red-600">
+                        ❌ Cancel Subscription
+                      </h4>
+                      <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
+                        <p className="text-gray-700 mb-4">
+                          Cancelling your subscription will downgrade your account to the <strong>Free</strong> tier. 
+                          You'll lose access to premium features including:
+                        </p>
+                        <ul className="list-disc list-inside text-gray-600 mb-4 space-y-1">
+                          <li>Extended historical data access ({userData.tier === 'researcher' ? '1 year' : 'unlimited'})</li>
+                          <li>Higher API rate limits</li>
+                          <li>Advanced analytics and reports</li>
+                          <li>Priority support</li>
+                        </ul>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to cancel your subscription? This action will downgrade you to the free tier immediately.')) {
+                              setIsLoading(true);
+                              try {
+                                const result = await changeTier('free');
+                                
+                                if (result.success) {
+                                  setUserData(prev => ({ ...prev, tier: 'free' }));
+                                  showToast('Subscription cancelled successfully. You are now on the Free tier.', 'success');
+                                } else {
+                                  showToast(result.error || 'Failed to cancel subscription', 'error');
                                 }
-                              });
-                              
-                              const data = await response.json();
-                              
-                              if (response.ok) {
-                                setUserData(prev => ({ ...prev, tier: 'free' }));
-                                showToast(data.message || 'Subscription cancelled successfully', 'success');
-                              } else {
-                                showToast(data.detail || 'Failed to cancel subscription', 'error');
+                              } catch (error) {
+                                showToast('Failed to cancel subscription: ' + error.message, 'error');
+                              } finally {
+                                setIsLoading(false);
                               }
-                            } catch (error) {
-                              showToast('Failed to cancel subscription: ' + error.message, 'error');
-                            } finally {
-                              setIsLoading(false);
                             }
-                          }
-                        }}
-                        disabled={isLoading}
-                        className="px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isLoading ? '⏳ Cancelling...' : '🚫 Cancel My Subscription'}
-                      </button>
+                          }}
+                          disabled={isLoading}
+                          className="px-8 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isLoading ? '⏳ Cancelling...' : '🚫 Cancel My Subscription'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Password Change Section */}
                 <div className="border-t border-gray-300 pt-10">

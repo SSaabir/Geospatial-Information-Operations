@@ -39,12 +39,12 @@ export default function Dashboard() {
           const hourlyData = [];
           const latestDay = trendsResponse.daily_temps[trendsResponse.daily_temps.length - 1];
           
-          // Generate hourly points for today based on latest data
+          {/* Generate hourly points for today based on latest data */}
           for (let hour = 0; hour <= 20; hour += 4) {
             hourlyData.push({
               time: `${hour.toString().padStart(2, '0')}:00`,
-              temp: latestDay.temp + (Math.random() * 4 - 2), // Add variation
-              humidity: latestDay.humidity + (Math.random() * 10 - 5)
+              temp: Math.round((latestDay.temp + (Math.random() * 4 - 2)) * 10) / 10, // Round to 1 decimal
+              humidity: Math.round(latestDay.humidity + (Math.random() * 10 - 5))
             });
           }
           setTemperatureData(hourlyData);
@@ -163,10 +163,10 @@ export default function Dashboard() {
               <div>
                 <p className="text-gray-600 text-sm">Current Temperature</p>
                 <p className="text-2xl font-bold text-gray-800">
-                  {temperatureData.length ? `${temperatureData[temperatureData.length - 1].temp}°C` : '...'}
+                  {temperatureData.length ? `${Math.round(temperatureData[temperatureData.length - 1].temp * 10) / 10}°C` : '...'}
                 </p>
                 <p className="text-green-600 text-xs flex items-center mt-1">
-                  <TrendingUp className="w-3 h-3 mr-1" /> +2.5° from yesterday
+                  <TrendingUp className="w-3 h-3 mr-1" /> +2° from yesterday
                 </p>
               </div>
               <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-500 rounded-xl flex items-center justify-center">
@@ -181,7 +181,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-gray-600 text-sm">Humidity</p>
                 <p className="text-2xl font-bold text-gray-800">
-                  {temperatureData.length ? `${temperatureData[temperatureData.length - 1].humidity}%` : '...'}
+                  {temperatureData.length ? `${Math.round(temperatureData[temperatureData.length - 1].humidity)}%` : '...'}
                 </p>
                 <p className="text-blue-600 text-xs flex items-center mt-1">
                   <Droplets className="w-3 h-3 mr-1" /> Normal range
