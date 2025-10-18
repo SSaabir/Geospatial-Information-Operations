@@ -956,10 +956,7 @@ def run_enhanced_orchestrator_workflow(user_input: str, user_context: Dict = Non
 def classify_user_intent(query: str) -> str:
     """
     Module-level function to classify user intent
-    Args:
-        query: User's natural language query
-    Returns:
-        str: Classified workflow type
+
     """
     orchestrator = EnhancedOrchestrator()
     classification = orchestrator.classify_user_intent(query)

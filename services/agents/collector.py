@@ -608,10 +608,14 @@ def fetch_extra_earth_data(location: str = "colombo") -> str:
     # Open-Meteo Air Quality API
     url = "https://air-quality-api.open-meteo.com/v1/air-quality"
     params = {
-    "latitude": lat,
-    "longitude": lon,
-    "hourly": "pm10,pm2_5,carbon_monoxide,ozone"
-}
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": "pm10,pm2_5,carbon_monoxide,ozone",
+        "current": "pm10,pm2_5,carbon_monoxide,ozone"  # Also get current values
+    }
+    
+    print(f"🌍 Fetching air quality from Open-Meteo API for ({lat}, {lon})...")
+    
     try:
         resp = requests.get(url, params=params, timeout=10)
     except Exception as e:
@@ -625,12 +629,32 @@ def fetch_extra_earth_data(location: str = "colombo") -> str:
     except Exception as e:
         return json.dumps({"error": "invalid_json", "details": str(e)})
 
-    # Get latest index (last hourly point)
+    print(f"📡 API Response received: {len(str(data))} bytes")
+    
+    # Try to get current values first (most recent data)
+    current = data.get("current", {})
+    if current and any(current.get(key) is not None for key in ["pm10", "pm2_5", "carbon_monoxide", "ozone"]):
+        print("✅ Using CURRENT air quality data from API")
+        latest = {
+            "time": current.get("time", datetime.now().isoformat()),
+            "pm10": current.get("pm10"),
+            "pm2_5": current.get("pm2_5"),
+            "carbon_monoxide": current.get("carbon_monoxide"),
+            "ozone": current.get("ozone"),
+            "lat": lat,
+            "lon": lon,
+        }
+        print(f"   PM10: {latest['pm10']}, PM2.5: {latest['pm2_5']}, CO: {latest['carbon_monoxide']}, O3: {latest['ozone']}")
+        return json.dumps(latest)
+    
+    # Fallback to hourly data if current is not available
     hourly = data.get("hourly", {})
     times = hourly.get("time", [])
     if not times:
-        return json.dumps({"error": "no_hourly_data"})
+        return json.dumps({"error": "no_hourly_data", "api_response": data})
 
+    print(f"⏰ Using HOURLY data - found {len(times)} time points")
+    
     idx = -1
     try:
         latest = {
@@ -642,6 +666,7 @@ def fetch_extra_earth_data(location: str = "colombo") -> str:
             "lat": lat,
             "lon": lon,
         }
+        print(f"   PM10: {latest['pm10']}, PM2.5: {latest['pm2_5']}, CO: {latest['carbon_monoxide']}, O3: {latest['ozone']}")
     except Exception as e:
         return json.dumps({"error": "parse_error", "details": str(e), "raw": data})
 
@@ -667,30 +692,71 @@ def upload_air_quality_to_postgres(location: str = "Colombo") -> str:
     if data.get("error"):
         return json.dumps({"error": "fetch_error", "details": data})
 
-    # Extract fields, safely using None if missing
-    datetime_val = data.get("time") or str(datetime.today().date())
+    # Extract and validate fields
+    datetime_val = data.get("time")
+    if not datetime_val:
+        datetime_val = str(datetime.today().date())
+    
+    # Extract air quality parameters - these should have actual values from API
     pm10 = data.get("pm10")
     pm2_5 = data.get("pm2_5")
     carbon_monoxide = data.get("carbon_monoxide")
     ozone = data.get("ozone")
     lat = data.get("lat")
     lon = data.get("lon")
-    country = data.get("country") or "Sri Lanka"  # optional default
+    
+    # Debug: Print what we received from API
+    print(f"📊 Raw API data for {location}:")
+    print(f"   Time: {datetime_val}")
+    print(f"   PM10: {pm10} (type: {type(pm10)})")
+    print(f"   PM2.5: {pm2_5} (type: {type(pm2_5)})")
+    print(f"   CO: {carbon_monoxide} (type: {type(carbon_monoxide)})")
+    print(f"   O3: {ozone} (type: {type(ozone)})")
+    print(f"   Coordinates: ({lat}, {lon})")
+    
+    # Validate that we have at least some data
+    if all(v is None for v in [pm10, pm2_5, carbon_monoxide, ozone]):
+        return json.dumps({
+            "error": "no_valid_data",
+            "details": "All air quality parameters are None from API",
+            "raw_data": data
+        })
+    
+    country = "Sri Lanka"
     statedistrict = location
     source = "Open-Meteo Air Quality API"
 
-    # Insert into PostgreSQL
+    # Insert into PostgreSQL using pandas for proper NULL handling
+    import pandas as pd
+    
+    if engine is None:
+        return json.dumps({"error": "db_not_initialized", "details": "Database engine not available"})
+    
     try:
-        sql = f"""
-        INSERT INTO air_quality_data (
-            country, statedistrict, datetime, pm10, pm2_5, carbon_monoxide, ozone, lat, lon, source
-        ) VALUES (
-            '{country}', '{statedistrict}', '{datetime_val}', {pm10}, {pm2_5}, {carbon_monoxide}, {ozone}, {lat}, {lon}, '{source}'
-        );
-        """
-        db.run(sql)
+        air_quality_record = pd.DataFrame([{
+            "country": country,
+            "statedistrict": statedistrict,
+            "datetime": datetime_val,
+            "pm10": pm10,
+            "pm2_5": pm2_5,
+            "carbon_monoxide": carbon_monoxide,
+            "ozone": ozone,
+            "lat": lat,
+            "lon": lon,
+            "source": source
+        }])
+        
+        # Debug: Show what we're about to insert
+        print(f"\n💾 Inserting into database:")
+        print(air_quality_record.to_string())
+        
+        air_quality_record.to_sql('air_quality_data', engine, if_exists='append', index=False)
+        print(f"\n✅ Air quality data for {statedistrict} stored successfully")
+        print(f"   PM10: {pm10}, PM2.5: {pm2_5}, CO: {carbon_monoxide}, O3: {ozone}")
+        
     except Exception as e:
-        return json.dumps({"error": "db_insert_failed", "details": str(e), "sql": sql})
+        print(f"\n❌ Database insertion failed: {str(e)}")
+        return json.dumps({"error": "db_insert_failed", "details": str(e)})
 
     return json.dumps({"success": True, "uploaded_data": data}, default=str)
 
