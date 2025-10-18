@@ -5,7 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export default function Settings() {
-  const { user, updateProfile, changeTier, changePassword, logout, apiCall, isLoading: authLoading } = useAuth();
+  const { user, updateProfile, changeTier, changePassword, logout, apiCall, refreshUser, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   
   // =======================
@@ -168,6 +168,10 @@ export default function Settings() {
       
       if (result.success) {
         setUserData((prev) => ({ ...prev, tier: result.user.tier }));
+        
+        // Refresh user data from backend to update context and localStorage
+        await refreshUser();
+        
         showToast(`Tier updated to ${result.user.tier.toUpperCase()}! 🚀`, "success");
       } else {
         showToast(result.error, "error");
@@ -473,6 +477,7 @@ export default function Settings() {
                       </h4>
                       <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6">
                         <p className="text-gray-700 mb-4">
+                          You are currently on the <strong className={updateTierBadge(userData.tier)}>{userData.tier.toUpperCase()}</strong> plan. 
                           Cancelling your subscription will downgrade your account to the <strong>Free</strong> tier. 
                           You'll lose access to premium features including:
                         </p>
@@ -487,16 +492,38 @@ export default function Settings() {
                             if (window.confirm('Are you sure you want to cancel your subscription? This action will downgrade you to the free tier immediately.')) {
                               setIsLoading(true);
                               try {
-                                const result = await changeTier('free');
+                                console.log('Attempting to cancel subscription...');
                                 
-                                if (result.success) {
+                                // Use the billing API endpoint for cancellation
+                                const response = await apiCall('/billing/cancel-subscription', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json'
+                                  }
+                                });
+                                
+                                console.log('Cancel subscription response:', response);
+                                
+                                if (response && (response.success || response.message)) {
+                                  // Update local user data
                                   setUserData(prev => ({ ...prev, tier: 'free' }));
-                                  showToast('Subscription cancelled successfully. You are now on the Free tier.', 'success');
+                                  
+                                  // Refresh user data from backend to update context
+                                  await refreshUser();
+                                  
+                                  showToast(response.message || 'Subscription cancelled successfully. You are now on the Free tier.', 'success');
+                                  
+                                  // Optional: Reload to ensure all components reflect the change
+                                  setTimeout(() => {
+                                    window.location.reload();
+                                  }, 1500);
                                 } else {
-                                  showToast(result.error || 'Failed to cancel subscription', 'error');
+                                  showToast(response?.detail || response?.error || 'Failed to cancel subscription', 'error');
                                 }
                               } catch (error) {
-                                showToast('Failed to cancel subscription: ' + error.message, 'error');
+                                console.error('Cancel subscription error:', error);
+                                const errorMessage = error.response?.data?.detail || error.message || 'Unknown error occurred';
+                                showToast('Failed to cancel subscription: ' + errorMessage, 'error');
                               } finally {
                                 setIsLoading(false);
                               }

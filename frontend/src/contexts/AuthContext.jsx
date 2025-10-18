@@ -40,7 +40,17 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || `HTTP error! status: ${response.status}`);
+        // Create error with status code and proper message
+        const error = new Error(
+          data.detail?.error || 
+          data.detail?.message || 
+          data.detail || 
+          data.error ||
+          `HTTP error! status: ${response.status}`
+        );
+        error.status = response.status;
+        error.data = data;
+        throw error;
       }
 
       return data;

@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Checkout = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user, apiCall, isLoading: authLoading } = useAuth();
+  const { user, apiCall, isLoading: authLoading, refreshUser } = useAuth();
   
   const planId = searchParams.get('plan') || 'researcher';
   const [sessionId, setSessionId] = useState(null);
@@ -130,6 +130,8 @@ const Checkout = () => {
       });
 
       if (response.success) {
+        // Refresh user data to update tier immediately
+        await refreshUser();
         // Redirect to success page
         navigate(`/payment-success?session=${sessionId}&plan=${planId}`);
       } else {

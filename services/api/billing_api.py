@@ -206,7 +206,7 @@ async def cancel_subscription(
 ):
     """
     Cancel the user's active subscription
-    - Sets is_active = FALSE for all user's checkout sessions
+    - Sets is_active = FALSE for all user's checkout sessions (if any exist)
     - Downgrades tier to 'free'
     - Logs cancellation event
     """
@@ -216,6 +216,13 @@ async def cancel_subscription(
         user = db.query(UserDB).filter(UserDB.id == current_user.id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        
+        # Check current tier - if already free, nothing to cancel
+        if user.tier == "free":
+            raise HTTPException(
+                status_code=400, 
+                detail="You are already on the free tier. No active subscription to cancel."
+            )
         
         # Check if user has an active subscription
         result = db.execute(
@@ -229,24 +236,19 @@ async def cancel_subscription(
         )
         active_count = result.fetchone()[0]
         
-        if active_count == 0:
-            raise HTTPException(
-                status_code=400, 
-                detail="No active subscription found. You are currently on the free tier."
+        # Deactivate all active subscriptions (if any exist)
+        if active_count > 0:
+            db.execute(
+                text("""
+                    UPDATE checkout_sessions 
+                    SET is_active = FALSE 
+                    WHERE user_id = :user_id 
+                    AND is_active = TRUE
+                """),
+                {"user_id": user.id}
             )
         
-        # Deactivate all active subscriptions
-        db.execute(
-            text("""
-                UPDATE checkout_sessions 
-                SET is_active = FALSE 
-                WHERE user_id = :user_id 
-                AND is_active = TRUE
-            """),
-            {"user_id": user.id}
-        )
-        
-        # Downgrade to free tier
+        # Downgrade to free tier (regardless of whether checkout session exists)
         old_tier = user.tier
         user.tier = "free"
         db.commit()

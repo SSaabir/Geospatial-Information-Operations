@@ -48,7 +48,7 @@ const plans = [
 ];
 
 export default function Pricing() {
-  const { user, tier, changeTier, apiCall } = useAuth();
+  const { user, tier, changeTier, apiCall, refreshUser } = useAuth();
   const [hoveredRow, setHoveredRow] = useState(null);
 
   const handleSelect = async (planId) => {
@@ -59,7 +59,10 @@ export default function Pricing() {
     if (tier === planId) return;
     if (planId === 'free') {
       const result = await changeTier(planId);
-      if (!result.success) {
+      if (result.success) {
+        // Refresh user data to update context
+        await refreshUser();
+      } else {
         window.alert(result.error || 'Failed to change plan');
       }
       return;

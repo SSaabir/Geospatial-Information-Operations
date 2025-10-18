@@ -266,7 +266,12 @@ async def execute_workflow(
         check_and_notify_usage(metrics, tier, current_user.id, current_user.username)
 
         # Usage limit enforcement (may raise HTTPException with 100% notification)
-        enforce_quota_or_raise(metrics, tier, current_user.id, current_user.username)
+        try:
+            enforce_quota_or_raise(metrics, tier, current_user.id, current_user.username)
+        except HTTPException as quota_error:
+            # Re-raise quota exceptions with proper status code (429)
+            raise quota_error
+        
         tier_order = {"free": 0, "researcher": 1, "professional": 2}
         required_tier = {
             "data_view": "free",
@@ -391,6 +396,49 @@ async def execute_workflow(
             except Exception:
                 logger.exception("Non-fatal: failed to send workflow completion notification")
             return response_obj
+    
+    except HTTPException as http_exc:
+        # Re-raise HTTPExceptions (quota exceeded, permission denied, etc.) with their original status codes
+        execution_time = int((time.time() - start_time) * 1000)
+        
+        # Log the error
+        logger.warning(f"Workflow execution blocked: {http_exc.status_code} - {http_exc.detail}")
+        
+        # If it's a 429 (quota exceeded), return user-friendly message
+        if http_exc.status_code == status.HTTP_429_TOO_MANY_REQUESTS:
+            error_message = str(http_exc.detail)
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail={
+                    "request_id": request_id,
+                    "workflow_type": "quota_exceeded",
+                    "query": request.query,
+                    "status": "failed",
+                    "execution_time_ms": execution_time,
+                    "result": None,
+                    "error": f"🚫 API Quota Exceeded: {error_message}",
+                    "message": "You've reached your monthly API limit. Please upgrade your plan to continue.",
+                    "upgrade_url": "/pricing",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "user_id": current_user.id
+                }
+            )
+        
+        # For other HTTP exceptions, re-raise with proper formatting
+        raise HTTPException(
+            status_code=http_exc.status_code,
+            detail={
+                "request_id": request_id,
+                "workflow_type": "error",
+                "query": request.query,
+                "status": "failed",
+                "execution_time_ms": execution_time,
+                "result": None,
+                "error": str(http_exc.detail),
+                "timestamp": datetime.utcnow().isoformat(),
+                "user_id": current_user.id
+            }
+        )
             
     except Exception as e:
         execution_time = int((time.time() - start_time) * 1000)

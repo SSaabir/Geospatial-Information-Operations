@@ -18,14 +18,95 @@ function WorkflowChat() {
   // Load conversations from localStorage on mount
   useEffect(() => {
     loadConversations();
+    // Clean up old localStorage entries
+    cleanupOldStorage();
   }, [user]);
 
-  // Save conversations to localStorage whenever they change
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`conversations_${user.id}`, JSON.stringify(conversations));
+  const cleanupOldStorage = () => {
+    if (!user) return;
+    
+    try {
+      // Remove any oversized conversation data
+      const storageKey = `conversations_${user.id}`;
+      const data = localStorage.getItem(storageKey);
+      
+      if (data && data.length > 5000000) { // 5MB limit
+        console.warn('Conversation data too large, clearing...');
+        localStorage.removeItem(storageKey);
+      }
+      
+      // Clean up any other old conversation keys
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('conversations_') && key !== storageKey) {
+          // Remove conversations from other users or old format
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up storage:', error);
     }
-  }, [conversations, user]);
+  };
+
+  // Save conversations to localStorage whenever they change (with size management)
+  useEffect(() => {
+    if (user && conversations.length > 0) {
+      try {
+        // Create a lightweight version of conversations for storage
+        const lightConversations = conversations.map(conv => ({
+          id: conv.id,
+          title: conv.title,
+          createdAt: conv.createdAt,
+          updatedAt: conv.updatedAt,
+          // Only keep last 20 messages per conversation to save space
+          messages: (conv.messages || []).slice(-20).map(msg => ({
+            role: msg.role,
+            content: msg.content.slice(0, 5000), // Limit content to 5000 chars
+            isError: msg.isError,
+            isQuotaError: msg.isQuotaError,
+            workflow_type: msg.workflow_type,
+            timestamp: msg.timestamp
+            // Remove large data objects, visualizations
+          }))
+        }));
+        
+        // Keep only last 10 conversations
+        const recentConversations = lightConversations.slice(-10);
+        
+        localStorage.setItem(`conversations_${user.id}`, JSON.stringify(recentConversations));
+      } catch (error) {
+        if (error.name === 'QuotaExceededError') {
+          console.warn('localStorage quota exceeded, clearing old conversations');
+          // Clear old conversations and try again with just the current one
+          try {
+            const currentConv = conversations.find(c => c.id === currentConversationId);
+            if (currentConv) {
+              const minimal = [{
+                id: currentConv.id,
+                title: currentConv.title,
+                createdAt: currentConv.createdAt,
+                updatedAt: currentConv.updatedAt,
+                messages: (currentConv.messages || []).slice(-10).map(msg => ({
+                  role: msg.role,
+                  content: msg.content.slice(0, 2000),
+                  timestamp: msg.timestamp
+                }))
+              }];
+              localStorage.setItem(`conversations_${user.id}`, JSON.stringify(minimal));
+              // Update conversations to only keep current
+              setConversations(minimal);
+            }
+          } catch (e) {
+            console.error('Failed to save even minimal conversation data:', e);
+            // Last resort: clear all conversation data
+            localStorage.removeItem(`conversations_${user.id}`);
+          }
+        } else {
+          console.error('Failed to save conversations:', error);
+        }
+      }
+    }
+  }, [conversations, user, currentConversationId]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -100,6 +181,19 @@ Try clicking the quick action buttons below or type your own query!`,
       } else {
         createNewConversation();
       }
+    }
+  };
+
+  const clearAllConversations = () => {
+    if (window.confirm('⚠️ Clear all conversations? This will free up storage space but cannot be undone.')) {
+      setConversations([]);
+      setMessages([]);
+      setCurrentConversationId(null);
+      if (user) {
+        localStorage.removeItem(`conversations_${user.id}`);
+      }
+      // Create a fresh conversation
+      setTimeout(() => createNewConversation(), 100);
     }
   };
 
@@ -182,10 +276,31 @@ Try clicking the quick action buttons below or type your own query!`,
     } catch (error) {
       console.error('Workflow error:', error);
       
+      // Check if it's a quota exceeded error (429 status)
+      let errorContent = '';
+      let isQuotaError = false;
+      
+      if (error.status === 429 || error.message?.includes('quota') || error.message?.includes('Quota') || error.message?.includes('limit exceeded')) {
+        isQuotaError = true;
+        errorContent = `🚫 **API Quota Exceeded**
+
+You've reached your monthly API limit. Your current plan has limited API calls per month.
+
+**What you can do:**
+- ⬆️ Upgrade to a higher tier plan for more API calls
+- 📊 Check your usage in Settings
+- ⏰ Wait for your quota to reset next month
+
+Visit our [Pricing Page](/pricing) to upgrade your plan and continue using the service.`;
+      } else {
+        errorContent = error.message || 'Unable to process your request. Please try again.';
+      }
+      
       const errorMessage = {
         role: 'assistant',
-        content: `I encountered an error: ${error.message || 'Unable to process your request. Please try again.'}`,
+        content: errorContent,
         isError: true,
+        isQuotaError: isQuotaError,
         timestamp: new Date().toISOString()
       };
 
@@ -230,7 +345,7 @@ Try clicking the quick action buttons below or type your own query!`,
         } bg-gray-900 text-white transition-all duration-300 overflow-hidden flex flex-col`}
       >
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-gray-700 space-y-2">
           <button
             onClick={createNewConversation}
             className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-orange-600 hover:from-blue-700 hover:to-orange-700 text-white px-4 py-3 rounded-lg transition-all font-medium"
@@ -238,6 +353,18 @@ Try clicking the quick action buttons below or type your own query!`,
             <Plus className="w-5 h-5" />
             New Chat
           </button>
+          
+          {/* Clear All Button */}
+          {conversations.length > 1 && (
+            <button
+              onClick={clearAllConversations}
+              className="w-full flex items-center justify-center gap-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-lg transition-all text-sm border border-red-600/30"
+              title="Clear all conversations to free up storage"
+            >
+              <Trash2 className="w-4 h-4" />
+              Clear All ({conversations.length})
+            </button>
+          )}
         </div>
 
         {/* Conversations List */}
@@ -371,9 +498,13 @@ Try clicking the quick action buttons below or type your own query!`,
                 {/* Avatar for Assistant */}
                 {message.role === 'assistant' && (
                   <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                    message.isError ? 'bg-red-500' : 'bg-gradient-to-r from-orange-500 to-orange-600'
+                    message.isQuotaError ? 'bg-orange-500' : message.isError ? 'bg-red-500' : 'bg-gradient-to-r from-orange-500 to-orange-600'
                   }`}>
-                    <Bot className="w-5 h-5 text-white" />
+                    {message.isQuotaError ? (
+                      <span className="text-white text-lg">🚫</span>
+                    ) : (
+                      <Bot className="w-5 h-5 text-white" />
+                    )}
                   </div>
                 )}
 
@@ -382,11 +513,25 @@ Try clicking the quick action buttons below or type your own query!`,
                   <div className={`inline-block rounded-2xl px-6 py-4 ${
                     message.role === 'user'
                       ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white'
+                      : message.isQuotaError
+                      ? 'bg-orange-50 text-orange-900 border-2 border-orange-300'
                       : message.isError
                       ? 'bg-red-50 text-red-900 border border-red-200'
                       : 'bg-white text-gray-800 border border-gray-200 shadow-sm'
                   }`}>
                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    
+                    {/* Add upgrade button for quota errors */}
+                    {message.isQuotaError && (
+                      <div className="mt-4 pt-4 border-t border-orange-200">
+                        <a
+                          href="/pricing"
+                          className="inline-block px-6 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg font-semibold hover:from-orange-600 hover:to-orange-700 transition-all"
+                        >
+                          ⬆️ Upgrade Plan
+                        </a>
+                      </div>
+                    )}
                     
                     {/* Render based on workflow type */}
                     {message.role === 'assistant' && !message.isError && (() => {
